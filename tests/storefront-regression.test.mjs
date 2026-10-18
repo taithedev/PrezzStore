@@ -53,3 +53,13 @@ test("Stripe seller onboarding returns actionable errors and preserves account r
  assert.match(stripe,/idempotencyKey: "prezzstore_seller_" \+ storeId/);
  assert.match(stripe,/stripe\(\)\.v2\.core\.accountLinks\.create/);
 });
+
+test("PrezzStore payment backend has explicit service-role grants",()=>{
+ const migration=read("supabase/migrations/003_prezzstore_service_role_backend_grants.sql");
+ const connect=read("app/api/stripe/connect/route.ts");
+ assert.match(migration,/grant select, update on table public\.prezzstore_stores to service_role;/);
+ assert.match(migration,/grant select on table public\.prezzstore_products to service_role;/);
+ assert.match(migration,/grant select, insert, update on table public\.prezzstore_orders to service_role;/);
+ assert.match(connect,/code === "42501"/);
+ assert.match(connect,/PrezzStore database access was denied/);
+});
