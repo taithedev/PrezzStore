@@ -38,7 +38,10 @@ function describeOnboardingFailure(error: unknown): { message: string; code: str
     return { code, status: 503, message: "Stripe temporarily restricted connected-account creation. Review the security verification request in your Stripe Dashboard." };
   }
   if (["accounts_v2_access_blocked", "non_connect_platform_accounts_v2_access_blocked"].includes(code)) {
-    return { code, status: 503, message: "Stripe Accounts v2 is not enabled for this platform. Enable supported Connect account configuration through Stripe." };
+    return { code, status: 503, message: "This request used an outdated Stripe Accounts v2 deployment. Retry the updated seller onboarding flow. Stripe still requires Connect platform registration." };
+  }
+  if (["accounts_v1_access_blocked", "accounts_v1_creation_not_supported", "account_creation_not_supported", "accounts_v1_creation_not_allowed", "accounts_v1_no_longer_recommended"].includes(code)) {
+    return { code, status: 503, message: "Stripe has not enabled Accounts v1 for this sandbox. An eligible platform representative must review Stripe Connect setup and request or enable Accounts v1 support only if Stripe allows it for this integration." };
   }
   if (["permission_error", "api_key_expired", "invalid_api_key"].includes(code) || statusCode === 401 || statusCode === 403) {
     return { code, status: 503, message: "Stripe rejected the server API key or its Connect permissions. Check the sandbox Stripe key and connected-account permissions in Vercel and Stripe." };
