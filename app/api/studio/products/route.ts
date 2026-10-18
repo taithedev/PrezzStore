@@ -6,13 +6,14 @@ export async function POST(request:NextRequest){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
  let body:Record<string,unknown>;
  try{body=await request.json();}catch{return NextResponse.json({error:"Invalid listing"},{status:400});}
+ if(!body||typeof body!=="object"||Array.isArray(body))return NextResponse.json({error:"Invalid listing"},{status:400});
  const title=String(body.title||"").trim(),kind=body.kind,price=body.price_cents;
  const description=String(body.description||"").trim(),category=String(body.category||"Other").trim();
  const storeId=String(body.store_id||""),imagePath=body.image_path===null?null:String(body.image_path||"");
  const filePath=body.file_path===null?null:String(body.file_path||"");
  const published=body.published===true;
  if(title.length<3||title.length>120||description.length>10000||category.length<1||category.length>64
- ||!Number.isInteger(price)||Number(price)<100||Number(price)>50000000
+ ||(typeof price!=="number"||!Number.isInteger(price))||Number(price)<100||Number(price)>50000000
  ||(kind!=="digital"&&kind!=="membership")
  ||(kind==="digital"&&!filePath)
  ||(imagePath&&!imagePath.startsWith(user.id+"/"))

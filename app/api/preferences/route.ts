@@ -19,7 +19,7 @@ export async function PUT(request:NextRequest){
  if(!input || typeof input!=="object" || Array.isArray(input))return NextResponse.json({error:"Invalid preferences"},{status:400});
  const theme=input.theme,effect=input.effect,density=input.density,intensity=input.intensity,reduce_motion=input.reduce_motion;
  if(typeof theme!=="string"||!themes.includes(theme)||typeof effect!=="string"||!effects.includes(effect)
-    ||typeof density!=="string"||!densities.includes(density)||!Number.isInteger(intensity)
+    ||typeof density!=="string"||!densities.includes(density)||(typeof intensity!=="number"||!Number.isInteger(intensity))
     ||Number(intensity)<1||Number(intensity)>5||typeof reduce_motion!=="boolean")
    return NextResponse.json({error:"Invalid appearance options"},{status:400});
  const {data,error}=await db.from("prezzstore_preferences").upsert({
