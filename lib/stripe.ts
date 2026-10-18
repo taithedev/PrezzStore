@@ -4,8 +4,9 @@ export function stripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-08-26.dahlia" });
 }
 export function siteUrl() {
-  const url = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!url || !url.startsWith("https://")) throw new Error("Set NEXT_PUBLIC_SITE_URL to an HTTPS site URL");
+  const provided = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  const url = provided?.startsWith("http") ? provided : provided ? "https://" + provided : "";
+  if (!url.startsWith("https://")) throw new Error("HTTPS site URL is not configured");
   return url.replace(/\/$/, "");
 }
 export function feeBps() {

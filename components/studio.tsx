@@ -1,3 +1,4 @@
+import {SUPABASE_URL,SUPABASE_KEY} from "@/lib/public-supabase";
 "use client";
 import {useState} from "react";
 import {createBrowserClient} from "@supabase/ssr";
@@ -5,7 +6,7 @@ import Link from "next/link";
 import {ArrowRight,ArrowUpRight,Check,ExternalLink,FileUp,ImagePlus,LoaderCircle,PackageOpen,Palette,Plus,Store as StoreIcon,Wallet,LogOut} from "lucide-react";
 import type {Product,Store} from "@/lib/types";
 let browser:ReturnType<typeof createBrowserClient>|null=null;
-function db(){const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;if(!url||!key)throw new Error("Configure Supabase.");if(!browser)browser=createBrowserClient(url,key);return browser;}
+function db(){const url=SUPABASE_URL,key=SUPABASE_KEY;if(!url||!key)throw new Error("Configure Supabase.");if(!browser)browser=createBrowserClient(url,key);return browser;}
 const slugify=(x:string)=>x.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40);
 const categories=["Design","Software","Templates","Video","Music","Other"];
 export default function Studio({userId,userEmail,initialStore,initialProducts}:{userId:string|null;userEmail:string;initialStore:Store|null;initialProducts:Product[]}) {

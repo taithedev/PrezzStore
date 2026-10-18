@@ -1,10 +1,11 @@
+import {SUPABASE_URL,SUPABASE_KEY} from "@/lib/public-supabase";
 "use client";
 import {useEffect,useState} from "react";
 import {createBrowserClient} from "@supabase/ssr";
 import Link from "next/link";
 export default function Reset(){
  const [password,setPassword]=useState("");const [msg,setMsg]=useState("");const [busy,setBusy]=useState(false);const [ready,setReady]=useState(false);
- const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+ const url=SUPABASE_URL;const key=SUPABASE_KEY;
  useEffect(()=>{if(!url||!key)return;const db=createBrowserClient(url,key);const code=new URLSearchParams(location.search).get("code");
  (async()=>{if(code){const {error}=await db.auth.exchangeCodeForSession(code);if(error){setMsg(error.message);return;}history.replaceState(null,"",location.pathname);}const {data}=await db.auth.getSession();setReady(Boolean(data.session));if(!data.session)setMsg("Open the password recovery link sent to your email.");})();},[url,key]);
  async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);if(!url||!key){setMsg("Supabase is not configured");setBusy(false);return;}const {error}=await createBrowserClient(url,key).auth.updateUser({password});setMsg(error?error.message:"Password changed. You can sign in now.");setBusy(false);}

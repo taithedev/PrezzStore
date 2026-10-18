@@ -1,9 +1,10 @@
+import {SUPABASE_URL,SUPABASE_KEY} from "./public-supabase";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-export const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+export const configured = Boolean(SUPABASE_URL && SUPABASE_KEY);
 export function admin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error("Supabase backend is not configured");
   return createAdminClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -11,7 +12,7 @@ export function admin() {
 export async function server() {
   if (!configured) return null;
   const jar = await cookies();
-  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  return createServerClient(SUPABASE_URL!, SUPABASE_KEY!, {
     cookies: {
       getAll() { return jar.getAll(); },
       setAll(items) {

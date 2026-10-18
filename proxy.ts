@@ -1,7 +1,8 @@
+import {SUPABASE_URL,SUPABASE_KEY} from "@/lib/public-supabase";
 import {NextRequest,NextResponse} from "next/server";
 import {createServerClient} from "@supabase/ssr";
 export async function proxy(request:NextRequest){
- const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+ const url=SUPABASE_URL;const key=SUPABASE_KEY;
  if(!url||!key)return NextResponse.next({request});
  let response=NextResponse.next({request});
  const supabase=createServerClient(url,key,{cookies:{
