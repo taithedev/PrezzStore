@@ -1,0 +1,10 @@
+import type { Product } from "./types";
+// Visible only when Supabase isn't configured. These are previews, never for sale.
+export const demo: Product[] = [
+  { id:"preview-01", store_id:"preview", title:"Midnight UI Kit", slug:"midnight-ui-kit", description:"A refined collection of dark-mode interfaces, cards and components.", category:"Design", image_url:null, price_cents:2400, kind:"digital", file_path:null, published:true, created_at:"", demo:true },
+  { id:"preview-02", store_id:"preview", title:"Creator's Toolkit", slug:"creators-toolkit", description:"A practical pack of layouts, templates, and assets for makers.", category:"Templates", image_url:null, price_cents:1800, kind:"digital", file_path:null, published:true, created_at:"", demo:true },
+  { id:"preview-03", store_id:"preview", title:"The Studio Membership", slug:"studio-membership", description:"A monthly creator membership with members-only releases.", category:"Memberships", image_url:null, price_cents:800, kind:"membership", file_path:null, published:true, created_at:"", demo:true },
+  { id:"preview-04", store_id:"preview", title:"Nova Icon Library", slug:"nova-icon-library", description:"Sharp, minimalist icon system for web and desktop.", category:"Design", image_url:null, price_cents:1200, kind:"digital", file_path:null, published:true, created_at:"", demo:true },
+  { id:"preview-05", store_id:"preview", title:"Launchpad Web Template", slug:"launchpad-web-template", description:"A sleek starter design with thoughtful details.", category:"Software", image_url:null, price_cents:2900, kind:"digital", file_path:null, published:true, created_at:"", demo:true },
+  { id:"preview-06", store_id:"preview", title:"Motion Presets Vol. 01", slug:"motion-presets", description:"Elegant transition and motion presets for creative work.", category:"Video", image_url:null, price_cents:1600, kind:"digital", file_path:null, published:true, created_at:"", demo:true }
+];
