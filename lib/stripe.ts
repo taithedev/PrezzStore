@@ -13,13 +13,13 @@ export function stripe(): Stripe {
 
 export function stripeConfigured() {
   const key = process.env.STRIPE_SECRET_KEY;
-  return Boolean(key && (key.includes("_test_") || key.includes("_live_")));
+  return Boolean(key && (key.includes("_test_") || (key.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED === "true")));
 }
 
 export function siteUrl(): string {
   const supplied = process.env.NEXT_PUBLIC_SITE_URL
-    || process.env.VERCEL_URL
-    || process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    || process.env.VERCEL_PROJECT_PRODUCTION_URL
+    || process.env.VERCEL_URL;
   if (!supplied) throw new Error("Set NEXT_PUBLIC_SITE_URL to your site HTTPS origin");
   const url = new URL(supplied.startsWith("http") ? supplied : "https://" + supplied);
   if (url.protocol !== "https:" && !(url.hostname === "localhost" && url.protocol === "http:")) {

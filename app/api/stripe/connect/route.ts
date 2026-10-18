@@ -17,11 +17,18 @@ export async function POST() {
     let accountId: string = store.stripe_account_id ?? "";
     if (!accountId) {
       accountId = await createRecipient(user.email, store.name);
-      const { error: saveError } = await db.from("prezzstore_stores")
+      const { data: claimed, error: saveError } = await db.from("prezzstore_stores")
         .update({ stripe_account_id: accountId })
         .eq("id", store.id).eq("owner_id", user.id)
-        .is("stripe_account_id", null);
+        .is("stripe_account_id", null).select("stripe_account_id").maybeSingle();
       if (saveError) throw saveError;
+      if (!claimed) {
+        // Another onboarding request may have stored the account first.
+        const { data: current } = await db.from("prezzstore_stores")
+          .select("stripe_account_id").eq("id", store.id).maybeSingle();
+        if (!current?.stripe_account_id) throw new Error("Could not verify connected Stripe account");
+        accountId = current.stripe_account_id;
+      }
     }
     const url = await createOnboardingLink(accountId);
     return NextResponse.json({ url }, { headers: { "Cache-Control": "no-store" } });

@@ -64,3 +64,18 @@ The app blocks Checkout until the restricted key, signing secret, and database s
 - **Orders stay pending**: verify the webhook is subscribed and reachable; Checkout return URLs alone never mark an order paid.
 - **Membership management unavailable**: enable Billing customer portal for the sandbox.
 - **Vercel app not deployed**: import the GitHub repository into the intended Vercel team and grant deployment permissions; no billing credentials should be put in source files.
+
+## October 2026 improvements
+
+- The Creator Studio now reads the actual `prezzstore_stores` and `prezzstore_products` tables, fixing the missing-store dashboard.
+- Listing creation and editing use authenticated Next.js API routes, validate prices, and respect Supabase row-level security. Sellers can save drafts, publish or unpublish listings, and edit titles and prices.
+- Sales overview reads the seller's own order history, and private digital downloads are bound to that order's seller-owned storage prefix.
+- Appearance Studio (`/appearance`) supports OLED black, graphite and high-contrast styles, snow and stars, compact density, intensity and reduced motion. Signed-in users' choices persist in `prezzstore_preferences`.
+- These schema changes are additive and isolated from other apps in the shared Supabase project; see `supabase/migrations/002_prezzstore_preferences.sql`. This migration is already applied to zuzify.
+- Server-side Stripe configuration accepts either `STRIPE_SECRET_KEY` or the Vercel integration name `PREZZSTORE_STRIPE_SECRET_KEY`. Live payments remain deliberately gated by `PREZZSTORE_LIVE_PAYMENTS_ENABLED=true` **only after eligibility and legal/operational verification**. Never expose a secret key to the browser.
+
+### Payment configuration still required
+
+The Vercel-managed Stripe integration installs `PREZZSTORE_STRIPE_SECRET_KEY`, but the `STRIPE_WEBHOOK_SECRET` signing key must be set separately. Until a signed webhook is configured, Checkout intentionally remains unavailable so purchases cannot be falsely marked paid. Test in Stripe sandbox with a verified eligible seller account and a separate buyer before considering live payments. If the account operator is under 18, Stripe may require an adult account representative; never bypass account or identity restrictions.
+
+After deployment, visit `/dashboard`, `/appearance`, and `/orders` to validate your account, and run `npm run typecheck && npm test && npm run build` for code regression checks.

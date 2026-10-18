@@ -1,0 +1,41 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const read=p=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
+test("dashboard reads isolated PrezzStore store and listing tables",()=>{
+ const s=read("app/dashboard/page.tsx");
+ assert.match(s,/from\("prezzstore_stores"\)/);
+ assert.match(s,/from\("prezzstore_products"\)/);
+ assert.doesNotMatch(s,/from\("prezz_stores"\)|from\("prezz_products"\)/);
+});
+test("seller listing changes verify ownership and restrict editable fields",()=>{
+ const s=read("app/api/studio/products/[id]/route.ts");
+ assert.match(s,/currentUser\(\)/);
+ assert.match(s,/\.eq\("owner_id",user.id\)/);
+ assert.doesNotMatch(s,/updates\.file_path\s*=/);
+ assert.doesNotMatch(s,/updates\.store_id\s*=/);
+});
+test("downloads require paid orders and seller-owned file paths",()=>{
+ const s=read("app/api/download/[id]/route.ts");
+ assert.match(s,/order.status!=="paid"/);
+ assert.match(s,/product.file_path.startsWith\(order.seller_id\+"\/"\)/);
+});
+test("Stripe requires signing secret for checkout and live launch is gated",()=>{
+ const s=read("app/api/checkout/route.ts"),keys=read("lib/stripe.ts");
+ assert.match(s,/process.env.STRIPE_WEBHOOK_SECRET/);
+ assert.match(keys,/PREZZSTORE_STRIPE_SECRET_KEY/);
+ assert.match(keys,/PREZZSTORE_LIVE_PAYMENTS_ENABLED/);
+});
+test("saved preferences are authenticated and row scoped",()=>{
+ const s=read("app/api/preferences/route.ts");
+ assert.match(s,/currentUser\(\)/);
+ assert.match(s,/user_id",user.id/);
+ assert.match(s,/user_id:user.id/);
+});
+test("appearance supports OLED black, snow, stars and motion preferences",()=>{
+ const s=read("components/appearance-panel.tsx");
+ assert.match(s,/OLED Black/);
+ assert.match(s,/snow/);
+ assert.match(s,/stars/);
+ assert.match(s,/reduce_motion/);
+});
