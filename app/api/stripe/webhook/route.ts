@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       if (orderId && session.id) {
         // Match the session Stripe created, never trust an arbitrary order ID alone.
         const {error} = await db.from("prezz_orders").update({
-          status:"paid", stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null
+          status:"paid", membership_status:session.mode === "subscription" ? "active" : "inactive", stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : null
         }).eq("id",orderId).eq("stripe_session_id",session.id).eq("status","pending");
         if (error) throw error;
       }
