@@ -1,5 +1,6 @@
-import {SUPABASE_URL,SUPABASE_KEY} from "@/lib/public-supabase";
 "use client";
+import {SUPABASE_URL,SUPABASE_KEY} from "@/lib/public-supabase";
+
 import {useState} from "react";
 import {createBrowserClient} from "@supabase/ssr";
 import Link from "next/link";
