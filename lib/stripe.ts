@@ -12,7 +12,7 @@ export function stripe(): Stripe {
 }
 
 export function stripeConfigured() {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY;
   return Boolean(key && (key.includes("_test_") || (key.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED === "true")));
 }
 
