@@ -5,13 +5,37 @@ export const runtime = "nodejs";
 
 // Return actionable, non-sensitive Stripe errors to the seller. Never return API keys,
 // raw Stripe requests or identifying onboarding information to the browser.
-function describeOnboardingFailure(error: unknown): { message: string; code: string; status: number } {
+type OnboardingStep = "read_store" | "create_seller" | "save_seller" | "create_onboarding_link";
+function describeOnboardingFailure(error: unknown, step: OnboardingStep): { message: string; code: string; status: number; requestId?: string } {
   const details = error && typeof error === "object"
     ? error as { code?: unknown; statusCode?: unknown; type?: unknown }
     : {};
   const code = typeof details.code === "string" && /^[a-z0-9_]{1,90}$/.test(details.code)
     ? details.code : "onboarding_failed";
   const statusCode = typeof details.statusCode === "number" ? details.statusCode : 0;
+  const reason = error instanceof Error ? error.message : "";
+  const type = typeof details.type === "string" ? details.type : "";
+  const requestId = typeof (details as { requestId?: unknown }).requestId === "string" &&
+    /^req_[a-zA-Z0-9]+$/.test((details as { requestId: string }).requestId)
+      ? (details as { requestId: string }).requestId : undefined;
+  const suffix = requestId ? " Stripe request: " + requestId + "." : "";
+  const stepName: Record<OnboardingStep, string> = {
+    read_store: "reading your shop",
+    create_seller: "creating the seller account",
+    save_seller: "saving the seller account",
+    create_onboarding_link: "opening Stripe onboarding"
+  };
+  // Stripe may return a descriptive message without error.code. Only expose
+  // sanitized Stripe SDK errors; never expose raw database or runtime errors.
+  const stripeMessage = type.startsWith("Stripe") && reason
+    ? reason
+      .replace(/\\b(?:sk|rk|pk)_(?:test|live)_[A-Za-z0-9_-]+\\b/g, "[secret hidden]")
+      .replace(/\\bwhsec_[A-Za-z0-9_-]+\\b/g, "[secret hidden]")
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[email hidden]")
+      .replace(/https?:\\/\\/\\S+/g, "[link hidden]")
+      .replace(/\\s+/g, " ").slice(0, 220)
+    : "";
+
   if (code === "42501") {
     return {
       code,
@@ -47,9 +71,20 @@ function describeOnboardingFailure(error: unknown): { message: string; code: str
     return { code, status: 503, message: "Stripe rejected the server API key or its Connect permissions. Check the sandbox Stripe key and connected-account permissions in Vercel and Stripe." };
   }
   if (code !== "onboarding_failed") {
-    return { code, status: 502, message: "Stripe could not create the seller account. Check the Stripe Dashboard request log for error code: " + code + "." };
+    return { code, status: 502, requestId,
+      message: "Onboarding failed while " + stepName[step] + ". Error code: " + code + "." + suffix +
+      (stripeMessage ? " Stripe says: " + stripeMessage : "") };
   }
-  return { code, status: 502, message: "Seller onboarding could not start. Review the Stripe Connect setup and Vercel server logs; no account has been linked yet." };
+  if (stripeMessage) {
+    return { code, status: statusCode >= 400 && statusCode < 500 ? statusCode : 502,
+      requestId, message: "Stripe could not continue while " + stepName[step] +
+      ". Stripe says: " + stripeMessage + "." + suffix };
+  }
+  return { code, status: 502, requestId,
+    message: "PrezzStore failed while " + stepName[step] +
+      ". Error type: " + (type || (error instanceof Error ? error.name : "unknown")) + "." + suffix +
+      " Check server logs for this step; no seller is shown as connected." };
+
 }
 
 export async function POST() {
@@ -57,6 +92,7 @@ export async function POST() {
   if (!user?.email) return NextResponse.json({ error: "Sign in to manage your store." }, { status: 401 });
   if (!stripeConfigured()) return NextResponse.json({ error: "Stripe sandbox is not configured yet." }, { status: 503 });
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ error: "Server database access is not configured." }, { status: 503 });
+  let step: OnboardingStep = "read_store";
   try {
     const db = admin();
     const { data: store, error: lookupError } = await db.from("prezzstore_stores")
@@ -65,7 +101,9 @@ export async function POST() {
     if (!store) return NextResponse.json({ error: "Create your store before connecting Stripe." }, { status: 404 });
     let accountId: string = store.stripe_account_id ?? "";
     if (!accountId) {
+      step = "create_seller";
       accountId = await createRecipient(user.email, store.name, store.id);
+      step = "save_seller";
       const { data: claimed, error: saveError } = await db.from("prezzstore_stores")
         .update({ stripe_account_id: accountId })
         .eq("id", store.id).eq("owner_id", user.id)
@@ -79,21 +117,23 @@ export async function POST() {
         accountId = current.stripe_account_id;
       }
     }
+    step = "create_onboarding_link";
     const url = await createOnboardingLink(accountId);
     return NextResponse.json({ url }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const failure = describeOnboardingFailure(error);
+    const failure = describeOnboardingFailure(error, step);
     const stripeError = error && typeof error === "object"
       ? error as { type?: string; requestId?: string; statusCode?: number; message?: string }
       : {};
     console.error("Seller onboarding:", {
+      step,
       code: failure.code,
       type: stripeError.type,
       statusCode: stripeError.statusCode,
       requestId: stripeError.requestId,
       message: stripeError.message
     });
-    return NextResponse.json({ error: failure.message, code: failure.code }, {
+    return NextResponse.json({ error: failure.message, code: failure.code, step, requestId: failure.requestId }, {
       status: failure.status, headers: { "Cache-Control": "no-store" }
     });
   }
