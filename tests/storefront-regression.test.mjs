@@ -39,3 +39,17 @@ test("appearance supports OLED black, snow, stars and motion preferences",()=>{
  assert.match(s,/stars/);
  assert.match(s,/reduce_motion/);
 });
+
+test("Stripe seller onboarding returns actionable errors and preserves account retries",()=>{
+ const route=read("app/api/stripe/connect/route.ts");
+ const stripe=read("lib/stripe.ts");
+ assert.match(route,/platform_registration_required/);
+ assert.match(route,/connect_identity_not_verified/);
+ assert.match(route,/account_creation_identity_verification_incomplete/);
+ assert.match(route,/permission_error/);
+ assert.match(route,/stripeError\.requestId/);
+ assert.match(route,/createRecipient\(user\.email, store\.name, store\.id\)/);
+ assert.doesNotMatch(route,/Unable to start Stripe onboarding\. Check sandbox/);
+ assert.match(stripe,/idempotencyKey: "prezzstore_seller_" \+ storeId/);
+ assert.match(stripe,/stripe\(\)\.v2\.core\.accountLinks\.create/);
+});
