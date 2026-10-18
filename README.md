@@ -59,7 +59,7 @@ The app blocks Checkout until the restricted key, signing secret, and database s
 ## Troubleshooting
 
 - **Stripe setup required** in Creator studio: Vercel has not been given all server-only credentials.
-- **Seller payments aren't ready**: the Stripe v2 recipient transfer capability is not active; complete onboarding and revisit Payments for status.
+- **Seller payments aren't ready**: the connected account's Stripe transfers capability or payouts are not active; complete Stripe-hosted onboarding and revisit Payments for status.
 - **Signed webhook failures**: confirm the event destination URL and its unique signing secret; don't reuse a CLI secret on Vercel.
 - **Orders stay pending**: verify the webhook is subscribed and reachable; Checkout return URLs alone never mark an order paid.
 - **Membership management unavailable**: enable Billing customer portal for the sandbox.
@@ -79,3 +79,25 @@ The app blocks Checkout until the restricted key, signing secret, and database s
 The Vercel-managed Stripe integration installs `PREZZSTORE_STRIPE_SECRET_KEY`, but the `STRIPE_WEBHOOK_SECRET` signing key must be set separately. Until a signed webhook is configured, Checkout intentionally remains unavailable so purchases cannot be falsely marked paid. Test in Stripe sandbox with a verified eligible seller account and a separate buyer before considering live payments. If the account operator is under 18, Stripe may require an adult account representative; never bypass account or identity restrictions.
 
 After deployment, visit `/dashboard`, `/appearance`, and `/orders` to validate your account, and run `npm run typecheck && npm test && npm run build` for code regression checks.
+
+## Stripe Connect compatibility (Accounts v2 unavailable)
+
+This deployment previously used the Accounts v2 API, but the connected sandbox returned
+`accounts_v2_access_blocked`. The seller-account integration now uses the official
+Accounts v1 controller-properties API (an Express-style Stripe-hosted onboarding flow):
+`stripe.accounts.create`, `stripe.accountLinks.create`, and
+`stripe.accounts.retrieve`. It checks both active `transfers` capability and
+`payouts_enabled` before checkout is allowed. The v1 creation idempotency key is
+scoped to the PrezzStore store UUID; seller identity still belongs to Stripe.
+
+Stripe recommends Accounts v2 for new platforms, and Accounts v1 account creation
+may require official support or an enabled compatibility feature. **Do not bypass
+Stripe Connect platform registration, account verification, legal requirements,
+or guardian requirements for underage sellers.** An eligible platform account
+representative must complete Stripe's onboarding if the sandbox is restricted.
+Official reference: https://docs.stripe.com/connect/migrate-to-controller-properties
+and https://support.stripe.com/questions/fix-the-accounts-v1-is-no-longer-recommended-error-for-connect-integrations
+
+The platform remains in sandbox/test mode, and production payments are not enabled.
+A seller must initiate and complete the hosted Stripe identity process themselves
+(or with the required legal guardian). Never create fake personal data to pass checks.
