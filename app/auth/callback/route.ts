@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from "next/server";
+import {createServerClient} from "@supabase/ssr";
+export async function GET(req:NextRequest){const code=new URL(req.url).searchParams.get("code");const response=NextResponse.redirect(new URL("/dashboard",req.url));const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;if(!code||!url||!key)return NextResponse.redirect(new URL("/login",req.url));const sb=createServerClient(url,key,{cookies:{getAll(){return req.cookies.getAll()},setAll(items){items.forEach(({name,value,options})=>response.cookies.set(name,value,options));}}});const {error}=await sb.auth.exchangeCodeForSession(code);return error?NextResponse.redirect(new URL("/login",req.url)):response;}

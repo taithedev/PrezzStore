@@ -1,0 +1,4 @@
+import MarketGrid from "@/components/market-grid";
+import {allProducts} from "@/lib/catalog";
+export const dynamic="force-dynamic";
+export default async function Explore({searchParams}:{searchParams:Promise<{category?:string}>}){const [{items,preview},params]=await Promise.all([allProducts(),searchParams]);return <div className="shell page-top"><div className="inner-hero"><span className="section-tag">THE CREATOR MARKETPLACE</span><h1>Discover your<br/><span className="headline-gradient">next favorite.</span></h1><p>A space for products and memberships made by real people.</p></div><MarketGrid items={items} preview={preview} title="All products" initialCategory={params.category||"All"}/></div>}

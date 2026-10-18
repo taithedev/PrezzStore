@@ -1,0 +1,3 @@
+import {Sparkles} from "lucide-react";
+import AuthForm from "@/components/auth-form";
+export default function Login(){return <div className="auth-layout"><div className="auth-aside"><div className="auth-aside-inner"><span className="section-tag bright"><Sparkles size={14}/> MADE FOR MAKERS</span><h2>Create freely.<br/>Sell beautifully.</h2><p>Products. People. Possibilities. All in one place.</p><div className="auth-aside-graphic">✳</div></div></div><div className="auth-main"><AuthForm/></div></div>}
