@@ -8,7 +8,7 @@ export async function POST(_:NextRequest) {
     const user = await currentUser();
     if (!user || !user.email) return NextResponse.json({error:"Sign in first"},{status:401});
     const db=admin();
-    const {data:store}=await db.from("prezz_stores").select("*").eq("owner_id",user.id).maybeSingle();
+    const {data:store}=await db.from("prezzstore_stores").select("*").eq("owner_id",user.id).maybeSingle();
     if(!store) return NextResponse.json({error:"Create your shop first"},{status:404});
     let id = store.stripe_account_id as string | null;
     if(!id) {
@@ -21,7 +21,7 @@ export async function POST(_:NextRequest) {
         include:["configuration.recipient","identity","requirements"]
       });
       id=account.id;
-      const {error}=await db.from("prezz_stores").update({stripe_account_id:id}).eq("id",store.id).eq("owner_id",user.id);
+      const {error}=await db.from("prezzstore_stores").update({stripe_account_id:id}).eq("id",store.id).eq("owner_id",user.id);
       if(error) throw error;
     }
     const base=siteUrl();

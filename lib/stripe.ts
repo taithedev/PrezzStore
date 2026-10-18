@@ -9,7 +9,7 @@ export function siteUrl() {
   return url.replace(/\/$/, "");
 }
 export function feeBps() {
-  const n = Number(process.env.PREZZ_PLATFORM_FEE_BPS || 800);
+  const n = Number(process.env.PREZZSTORE_PLATFORM_FEE_BPS || 800);
   if (!Number.isInteger(n) || n < 0 || n > 3000) throw new Error("Invalid platform fee");
   return n;
 }

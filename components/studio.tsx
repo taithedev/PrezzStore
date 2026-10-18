@@ -25,7 +25,7 @@ export default function Studio({userId,userEmail,initialStore,initialProducts}:{
   e.preventDefault();if(!userId)return;setBusy(true);setError("");setNotice("");
   try{
    const slug=slugify(shopSlug||shopName);if(slug.length<3)throw new Error("Shop URL needs 3+ characters.");
-   const {data,error}=await db().from("prezz_stores").insert({owner_id:userId,name:shopName.trim(),slug,description:shopDesc}).select().single();
+   const {data,error}=await db().from("prezzstore_stores").insert({owner_id:userId,name:shopName.trim(),slug,description:shopDesc}).select().single();
    if(error)throw error;setStore(data as Store);setNotice("Store created successfully.");
   }catch(e){setError(e instanceof Error?e.message:"Failed to create store");}finally{setBusy(false);}
  }
@@ -36,10 +36,10 @@ export default function Studio({userId,userEmail,initialStore,initialProducts}:{
    if(image&&(!["image/jpeg","image/png","image/webp","image/gif"].includes(image.type)||image.size>5242880))throw new Error("Cover image must be JPG, PNG, WebP or GIF under 5 MB.");
    if(file&&file.size>52428800)throw new Error("Downloads must be under 50 MB.");
    if(kind==="digital"&&!file)throw new Error("Upload a file for your digital download.");
-   const imagePath=image?await upload("prezz-assets",image):null;
-   const cover=imagePath?db().storage.from("prezz-assets").getPublicUrl(imagePath).data.publicUrl:null;
-   const path=file?await upload("prezz-deliveries",file):null;
-   const {data,error}=await db().from("prezz_products").insert({store_id:store.id,title:title.trim(),slug:slugify(title)+"-"+crypto.randomUUID().slice(0,6),description,price_cents:cents,category:kind==="membership"?"Memberships":category,kind,image_url:cover,file_path:path,published:true}).select().single();
+   const imagePath=image?await upload("prezzstore_assets",image):null;
+   const cover=imagePath?db().storage.from("prezzstore_assets").getPublicUrl(imagePath).data.publicUrl:null;
+   const path=file?await upload("prezzstore_deliveries",file):null;
+   const {data,error}=await db().from("prezzstore_products").insert({store_id:store.id,title:title.trim(),slug:slugify(title)+"-"+crypto.randomUUID().slice(0,6),description,price_cents:cents,category:kind==="membership"?"Memberships":category,kind,image_url:cover,file_path:path,published:true}).select().single();
    if(error)throw error;setProducts(old=>[data as Product,...old]);setTitle("");setDescription("");setPrice("");setNotice("Product published.");
   }catch(e){setError(e instanceof Error?e.message:"Upload failed");}finally{setBusy(false);}
  }
@@ -47,9 +47,9 @@ export default function Studio({userId,userEmail,initialStore,initialProducts}:{
   e.preventDefault();if(!store)return;setBusy(true);setError("");setNotice("");
   try{
    if(banner&&(!["image/png","image/jpeg","image/webp","image/gif"].includes(banner.type)||banner.size>5242880))throw new Error("Banner must be an image under 5 MB.");
-   const path=banner?await upload("prezz-assets",banner):null;
-   const banner_url=path?db().storage.from("prezz-assets").getPublicUrl(path).data.publicUrl:store.banner_url;
-   const {data,error}=await db().from("prezz_stores").update({description:shopDesc,accent,banner_url}).eq("id",store.id).select().single();
+   const path=banner?await upload("prezzstore_assets",banner):null;
+   const banner_url=path?db().storage.from("prezzstore_assets").getPublicUrl(path).data.publicUrl:store.banner_url;
+   const {data,error}=await db().from("prezzstore_stores").update({description:shopDesc,accent,banner_url}).eq("id",store.id).select().single();
    if(error)throw error;setStore(data as Store);setNotice("Appearance saved.");
   }catch(e){setError(e instanceof Error?e.message:"Unable to save");}finally{setBusy(false);}
  }
