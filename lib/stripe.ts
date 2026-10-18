@@ -3,7 +3,7 @@ import Stripe from "stripe";
 let client: Stripe | undefined;
 /** Uses a server-only restricted Stripe key. Real payments require an explicit separate launch decision. */
 export function stripe(): Stripe {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = (process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY);
   if (!key) throw new Error("Stripe sandbox key has not been configured");
   if (key.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED !== "true") {
     throw new Error("Live Stripe payments are disabled until the marketplace is approved for launch");
