@@ -1,19 +1,38 @@
-import {NextRequest,NextResponse} from "next/server";
-import {admin,currentUser} from "@/lib/supabase";
-import {siteUrl,stripe} from "@/lib/stripe";
-export const runtime="nodejs";
-export async function POST(req:NextRequest) {
- try{
-  const user=await currentUser();
-  if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
-  const raw=String((await req.formData()).get("orderId")||"");
-  if(!/^[0-9a-f-]{36}$/i.test(raw))return NextResponse.json({error:"Invalid order"},{status:400});
-  const {data:o}=await admin().from("prezz_orders").select("id,stripe_session_id,stripe_subscription_id").eq("id",raw).eq("buyer_id",user.id).maybeSingle();
-  if(!o?.stripe_session_id||!o.stripe_subscription_id)return NextResponse.json({error:"Membership not found"},{status:404});
-  const client=stripe();
-  const checkout=await client.checkout.sessions.retrieve(o.stripe_session_id);
-  if(checkout.metadata?.prezz_buyer_id!==user.id||typeof checkout.customer!=="string")return NextResponse.json({error:"Customer account missing"},{status:403});
-  const portal=await client.billingPortal.sessions.create({customer:checkout.customer,return_url:siteUrl()+"/orders"});
-  return NextResponse.redirect(portal.url,303);
- }catch(e){console.error("Billing portal:",e instanceof Error?e.message:e);return NextResponse.json({error:"Membership management is unavailable. Configure the Stripe Billing Portal in the Dashboard."},{status:500});}
+import { NextRequest, NextResponse } from "next/server";
+import { admin, currentUser } from "@/lib/supabase";
+import { siteUrl, stripe, stripeConfigured } from "@/lib/stripe";
+export const runtime = "nodejs";
+
+export async function POST(request: NextRequest) {
+  const user = await currentUser();
+  if (!user) return NextResponse.redirect(new URL("/login?next=/orders", request.url), 303);
+  if (!stripeConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ error: "Membership management is not configured." }, { status: 503 });
+  }
+  const data = await request.formData();
+  const orderId = String(data.get("orderId") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(orderId)) return NextResponse.json({ error: "Invalid order." }, { status: 400 });
+  try {
+    const { data: order, error } = await admin().from("prezzstore_orders")
+      .select("stripe_session_id,stripe_subscription_id")
+      .eq("id", orderId).eq("buyer_id", user.id).maybeSingle();
+    if (error) throw error;
+    if (!order?.stripe_session_id || !order.stripe_subscription_id) {
+      return NextResponse.json({ error: "Membership not found." }, { status: 404 });
+    }
+    const checkout = await stripe().checkout.sessions.retrieve(order.stripe_session_id);
+    if (checkout.metadata?.prezzstore_buyer_id !== user.id || checkout.mode !== "subscription") {
+      return NextResponse.json({ error: "Membership ownership verification failed." }, { status: 403 });
+    }
+    const customer = typeof checkout.customer === "string" ? checkout.customer : checkout.customer?.id;
+    if (!customer) return NextResponse.json({ error: "Stripe customer not available." }, { status: 409 });
+    const portal = await stripe().billingPortal.sessions.create({
+      customer,
+      return_url: siteUrl() + "/orders"
+    });
+    return NextResponse.redirect(portal.url, 303);
+  } catch (error) {
+    console.error("Billing portal:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: "Unable to open billing portal. Check that the portal is enabled in Stripe." }, { status: 502 });
+  }
 }

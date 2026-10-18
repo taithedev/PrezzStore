@@ -1,40 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
-import { siteUrl, stripeV2, type Recipient } from "@/lib/stripe";
+import { createRecipient, createOnboardingLink, stripeConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
-type AccountLink = { url: string };
-export async function POST(_:NextRequest) {
+
+export async function POST() {
+  const user = await currentUser();
+  if (!user?.email) return NextResponse.json({ error: "Sign in to manage your store." }, { status: 401 });
+  if (!stripeConfigured()) return NextResponse.json({ error: "Stripe sandbox is not configured yet." }, { status: 503 });
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ error: "Server database access is not configured." }, { status: 503 });
   try {
-    const user = await currentUser();
-    if (!user || !user.email) return NextResponse.json({error:"Sign in first"},{status:401});
-    const db=admin();
-    const {data:store}=await db.from("prezzstore_stores").select("*").eq("owner_id",user.id).maybeSingle();
-    if(!store) return NextResponse.json({error:"Create your shop first"},{status:404});
-    let id = store.stripe_account_id as string | null;
-    if(!id) {
-      const account = await stripeV2<Recipient>("accounts","POST",{
-        contact_email:user.email,
-        display_name:store.name,
-        defaults:{responsibilities:{fees_collector:"application",losses_collector:"application"}},
-        dashboard:"express", identity:{country:process.env.STRIPE_CONNECT_COUNTRY || "us"},
-        configuration:{recipient:{capabilities:{stripe_balance:{stripe_transfers:{requested:true}}}}},
-        include:["configuration.recipient","identity","requirements"]
-      });
-      id=account.id;
-      const {error}=await db.from("prezzstore_stores").update({stripe_account_id:id}).eq("id",store.id).eq("owner_id",user.id);
-      if(error) throw error;
+    const db = admin();
+    const { data: store, error: lookupError } = await db.from("prezzstore_stores")
+      .select("id,name,stripe_account_id").eq("owner_id", user.id).maybeSingle();
+    if (lookupError) throw lookupError;
+    if (!store) return NextResponse.json({ error: "Create your store before connecting Stripe." }, { status: 404 });
+    let accountId: string = store.stripe_account_id ?? "";
+    if (!accountId) {
+      accountId = await createRecipient(user.email, store.name);
+      const { error: saveError } = await db.from("prezzstore_stores")
+        .update({ stripe_account_id: accountId })
+        .eq("id", store.id).eq("owner_id", user.id)
+        .is("stripe_account_id", null);
+      if (saveError) throw saveError;
     }
-    const base=siteUrl();
-    const link=await stripeV2<AccountLink>("account_links","POST",{
-      account:id,
-      use_case:{type:"account_onboarding",account_onboarding:{
-        refresh_url:base+"/api/stripe/connect/refresh",
-        return_url:base+"/dashboard?stripe=returned"
-      }}
-    });
-    return NextResponse.json({url:link.url});
-  } catch(e) {
-    console.error("Connect:",e instanceof Error?e.message:e);
-    return NextResponse.json({error:"Seller onboarding is unavailable. Check your Stripe sandbox and HTTPS site URL."},{status:500});
+    const url = await createOnboardingLink(accountId);
+    return NextResponse.json({ url }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("Seller onboarding:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: "Unable to start Stripe onboarding. Check sandbox and connected-account settings." }, { status: 502 });
   }
 }
