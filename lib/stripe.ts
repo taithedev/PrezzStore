@@ -40,39 +40,49 @@ export type RecipientStatus = "active" | "pending" | "inactive";
 
 export async function recipientStatus(accountId: string): Promise<RecipientStatus> {
   if (!/^acct_[A-Za-z0-9]+$/.test(accountId)) return "inactive";
-  const result = await stripe().v2.core.accounts.retrieve(accountId, { include: ["configuration.recipient"] });
-  const status = result.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status;
-  return status === "active" ? "active" : (status === "pending" ? "pending" : "inactive");
+  // The connected marketplace uses the Accounts v1 controller-properties API
+  // because Stripe has not enabled Accounts v2 for this platform.
+  const account = await stripe().accounts.retrieve(accountId);
+  const transfers = account.capabilities?.transfers;
+  // A transfer capability alone does not prove the seller can be paid out.
+  if (transfers === "active" && account.payouts_enabled) return "active";
+  if (
+    transfers === "pending" ||
+    (account.requirements?.currently_due?.length ?? 0) > 0 ||
+    (account.requirements?.pending_verification?.length ?? 0) > 0 ||
+    account.requirements?.disabled_reason?.startsWith("requirements.")
+  ) return "pending";
+  return "inactive";
 }
 
 export async function createRecipient(email: string, displayName: string, storeId: string): Promise<string> {
-  // Use the same idempotency key on retries to avoid creating duplicate seller
-  // accounts if Stripe succeeds but saving the returned ID fails.
   if (!/^[0-9a-f-]{36}$/i.test(storeId)) throw new Error("Invalid store identifier");
-  const account = await stripe().v2.core.accounts.create({
-    display_name: displayName,
-    contact_email: email,
-    dashboard: "express",
-    identity: { country: (process.env.STRIPE_CONNECT_COUNTRY || "US").toUpperCase() },
-    defaults: { responsibilities: { fees_collector: "application", losses_collector: "application" } },
-    configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } } },
-    include: ["configuration.recipient", "requirements"]
-  }, { idempotencyKey: "prezzstore_seller_" + storeId });
+  // Official Stripe Accounts v1 controller-properties API. This still requires
+  // Connect registration and Stripe identity / eligibility verification.
+  // No identity information is invented or marked as verified by the platform.
+  const account = await stripe().accounts.create({
+    email,
+    country: (process.env.STRIPE_CONNECT_COUNTRY || "US").toUpperCase(),
+    controller: {
+      stripe_dashboard: { type: "express" },
+      fees: { payer: "application" },
+      losses: { payments: "application" },
+      requirement_collection: "stripe"
+    },
+    capabilities: { transfers: { requested: true } },
+    metadata: { prezzstore_store_id: storeId }
+  }, { idempotencyKey: "prezzstore_seller_v1_" + storeId });
   return account.id;
 }
 
 export async function createOnboardingLink(accountId: string): Promise<string> {
+  if (!/^acct_[A-Za-z0-9]+$/.test(accountId)) throw new Error("Invalid Stripe account identifier");
   const url = siteUrl();
-  const result = await stripe().v2.core.accountLinks.create({
+  const result = await stripe().accountLinks.create({
     account: accountId,
-    use_case: {
-      type: "account_onboarding",
-      account_onboarding: {
-        configurations: ["recipient"],
-        refresh_url: url + "/api/stripe/connect/refresh",
-        return_url: url + "/dashboard?stripe=returned"
-      }
-    }
+    type: "account_onboarding",
+    refresh_url: url + "/api/stripe/connect/refresh",
+    return_url: url + "/dashboard?stripe=returned"
   });
   return result.url;
 }
