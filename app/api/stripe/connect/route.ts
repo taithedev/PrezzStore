@@ -12,6 +12,13 @@ function describeOnboardingFailure(error: unknown): { message: string; code: str
   const code = typeof details.code === "string" && /^[a-z0-9_]{1,90}$/.test(details.code)
     ? details.code : "onboarding_failed";
   const statusCode = typeof details.statusCode === "number" ? details.statusCode : 0;
+  if (code === "42501") {
+    return {
+      code,
+      status: 503,
+      message: "PrezzStore database access was denied. The server role requires SELECT and UPDATE permissions on the PrezzStore store table. Contact the site administrator."
+    };
+  }
   if ([
     "platform_registration_required", "connect_profile_not_submitted",
     "account_create_activation_required", "connect_identity_not_verified",
