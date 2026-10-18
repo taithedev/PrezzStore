@@ -50,8 +50,14 @@ test("Stripe seller onboarding returns actionable errors and preserves account r
  assert.match(route,/stripeError\.requestId/);
  assert.match(route,/createRecipient\(user\.email, store\.name, store\.id\)/);
  assert.doesNotMatch(route,/Unable to start Stripe onboarding\. Check sandbox/);
- assert.match(stripe,/idempotencyKey: "prezzstore_seller_" \+ storeId/);
- assert.match(stripe,/stripe\(\)\.v2\.core\.accountLinks\.create/);
+ assert.match(stripe,/idempotencyKey: "prezzstore_seller_v1_" \+ storeId/);
+ assert.match(stripe,/stripe\(\)\.accountLinks\.create/);
+ assert.match(stripe,/stripe\(\)\.accounts\.create/);
+ assert.match(stripe,/stripe\(\)\.accounts\.retrieve/);
+ assert.match(stripe,/stripe_dashboard: \{ type: "express" \}/);
+ assert.match(stripe,/capabilities: \{ transfers: \{ requested: true \} \}/);
+ assert.match(stripe,/account\.payouts_enabled/);
+ assert.doesNotMatch(stripe,/stripe\(\)\.v2\.core\.accounts/);
 });
 
 test("PrezzStore payment backend has explicit service-role grants",()=>{
@@ -62,4 +68,12 @@ test("PrezzStore payment backend has explicit service-role grants",()=>{
  assert.match(migration,/grant select, insert, update on table public\.prezzstore_orders to service_role;/);
  assert.match(connect,/code === "42501"/);
  assert.match(connect,/PrezzStore database access was denied/);
+});
+
+test("Stripe Accounts v1 access errors are actionable without bypassing eligibility checks",()=>{
+ const connect=read("app/api/stripe/connect/route.ts");
+ assert.match(connect,/accounts_v1_access_blocked/);
+ assert.match(connect,/eligible platform representative/);
+ assert.match(connect,/account_creation_identity_verification_incomplete/);
+ assert.match(connect,/date_of_birth_age_restriction/);
 });
