@@ -4,30 +4,35 @@ import { admin, currentUser } from "@/lib/supabase";
 import { feeBps, recipientStatus, siteUrl, stripe, stripeConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
 
-function failure(message: string, status: number) {
+function failure(message: string, status: number, isForm = false, requestUrl?: string) {
+  if (isForm && requestUrl) {
+    const reason = status === 503 ? "setup" : status === 409 ? "seller" : "unavailable";
+    return NextResponse.redirect(new URL("/checkout/unavailable?reason=" + reason, requestUrl), 303);
+  }
   return NextResponse.json({ error: message }, { status });
 }
 export async function POST(request: NextRequest) {
   const contentType = request.headers.get("content-type") || "";
-  const isForm = !contentType.includes("application/json");
+  const isForm = contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data");
+  const reject = (message: string, status: number) => failure(message, status, isForm, request.url);
   const user = await currentUser();
   if (!user) {
     return isForm
       ? NextResponse.redirect(new URL("/login?next=/orders", request.url), 303)
       : failure("Please sign in to purchase.", 401);
   }
-  if (!user.email) return failure("An email address is required.", 400);
+  if (!user.email) return reject("An email address is required.", 400);
   if (!stripeConfigured() || !process.env.STRIPE_WEBHOOK_SECRET || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return failure("Payments are not set up yet. The seller can still publish products.", 503);
+    return reject("Payments are not set up yet. The seller can still publish products.", 503);
   }
   let productId = "";
   try {
     const body = contentType.includes("application/json") ? await request.json() : await request.formData();
     productId = body instanceof FormData ? String(body.get("productId") ?? "") : String(body.productId ?? "");
   } catch {
-    return failure("Invalid checkout request.", 400);
+    return reject("Invalid checkout request.", 400);
   }
-  if (!/^[0-9a-f-]{36}$/i.test(productId)) return failure("Invalid product.", 400);
+  if (!/^[0-9a-f-]{36}$/i.test(productId)) return reject("Invalid product.", 400);
   try {
     const db = admin();
     const { data: product, error: productError } = await db.from("prezzstore_products")
@@ -35,16 +40,16 @@ export async function POST(request: NextRequest) {
       .eq("id", productId).eq("published", true).maybeSingle();
     if (productError) throw productError;
     if (!product || !Number.isInteger(product.price_cents) || product.price_cents < 100 || product.price_cents > 50000000) {
-      return failure("This product isn't currently for sale.", 404);
+      return reject("This product isn't currently for sale.", 404);
     }
-    if (product.kind !== "digital" && product.kind !== "membership") return failure("Unsupported product type.", 400);
+    if (product.kind !== "digital" && product.kind !== "membership") return reject("Unsupported product type.", 400);
     const { data: store, error: storeError } = await db.from("prezzstore_stores")
       .select("owner_id,stripe_account_id").eq("id", product.store_id).maybeSingle();
     if (storeError) throw storeError;
-    if (!store?.stripe_account_id) return failure("Seller has not completed Stripe setup.", 409);
-    if (store.owner_id === user.id) return failure("You can't purchase your own product.", 400);
+    if (!store?.stripe_account_id) return reject("Seller has not completed Stripe setup.", 409);
+    if (store.owner_id === user.id) return reject("You can't purchase your own product.", 400);
     if (await recipientStatus(store.stripe_account_id) !== "active") {
-      return failure("Seller payments aren't ready yet. Complete Stripe onboarding first.", 409);
+      return reject("Seller payments aren't ready yet. Complete Stripe onboarding first.", 409);
     }
     const { data: order, error: orderError } = await db.from("prezzstore_orders").insert({
       buyer_id: user.id,
@@ -94,6 +99,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.redirect(checkout.url, 303);
   } catch (error) {
     console.error("Checkout:", error instanceof Error ? error.message : error);
-    return failure("Checkout is temporarily unavailable. Verify the seller account and Stripe configuration.", 502);
+    return reject("Checkout is temporarily unavailable. Verify the seller account and Stripe configuration.", 502);
   }
 }
