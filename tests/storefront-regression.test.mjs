@@ -77,3 +77,15 @@ test("Stripe Accounts v1 access errors are actionable without bypassing eligibil
  assert.match(connect,/account_creation_identity_verification_incomplete/);
  assert.match(connect,/date_of_birth_age_restriction/);
 });
+
+test("Onboarding error diagnostics preserve a safe failure stage without secrets",()=>{
+ const route=read("app/api/stripe/connect/route.ts");
+ assert.match(route,/type OnboardingStep/);
+ assert.match(route,/step = "create_seller"/);
+ assert.match(route,/step = "save_seller"/);
+ assert.match(route,/step = "create_onboarding_link"/);
+ assert.match(route,/stripeError\.requestId/);
+ assert.match(route,/Stripe says:/);
+ assert.match(route,/secret hidden/);
+ assert.match(route,/requestId: failure\.requestId/);
+});
