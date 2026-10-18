@@ -70,7 +70,7 @@ export async function createRecipient(email: string, displayName: string, storeI
       requirement_collection: "stripe"
     },
     capabilities: { transfers: { requested: true } },
-    metadata: { prezzstore_store_id: storeId }
+    metadata: { prezzstore_store_id: storeId, prezzstore_store_name: displayName.slice(0, 100) }
   }, { idempotencyKey: "prezzstore_seller_v1_" + storeId });
   return account.id;
 }
