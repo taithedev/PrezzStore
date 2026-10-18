@@ -45,7 +45,10 @@ export async function recipientStatus(accountId: string): Promise<RecipientStatu
   return status === "active" ? "active" : (status === "pending" ? "pending" : "inactive");
 }
 
-export async function createRecipient(email: string, displayName: string): Promise<string> {
+export async function createRecipient(email: string, displayName: string, storeId: string): Promise<string> {
+  // Use the same idempotency key on retries to avoid creating duplicate seller
+  // accounts if Stripe succeeds but saving the returned ID fails.
+  if (!/^[0-9a-f-]{36}$/i.test(storeId)) throw new Error("Invalid store identifier");
   const account = await stripe().v2.core.accounts.create({
     display_name: displayName,
     contact_email: email,
@@ -54,7 +57,7 @@ export async function createRecipient(email: string, displayName: string): Promi
     defaults: { responsibilities: { fees_collector: "application", losses_collector: "application" } },
     configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } } },
     include: ["configuration.recipient", "requirements"]
-  });
+  }, { idempotencyKey: "prezzstore_seller_" + storeId });
   return account.id;
 }
 
