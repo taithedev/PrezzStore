@@ -29,11 +29,11 @@ function describeOnboardingFailure(error: unknown, step: OnboardingStep): { mess
   // sanitized Stripe SDK errors; never expose raw database or runtime errors.
   const stripeMessage = type.startsWith("Stripe") && reason
     ? reason
-      .replace(/\\b(?:sk|rk|pk)_(?:test|live)_[A-Za-z0-9_-]+\\b/g, "[secret hidden]")
-      .replace(/\\bwhsec_[A-Za-z0-9_-]+\\b/g, "[secret hidden]")
-      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi, "[email hidden]")
-      .replace(/https?:\\/\\/\\S+/g, "[link hidden]")
-      .replace(/\\s+/g, " ").slice(0, 220)
+      .replace(/\b(?:sk|rk|pk)_(?:test|live)_[A-Za-z0-9_-]+\b/g, "[secret hidden]")
+      .replace(/\bwhsec_[A-Za-z0-9_-]+\b/g, "[secret hidden]")
+      .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email hidden]")
+      .replace(/https?:\/\/\S+/g, "[link hidden]")
+      .replace(/\s+/g, " ").slice(0, 220)
     : "";
 
   if (code === "42501") {
