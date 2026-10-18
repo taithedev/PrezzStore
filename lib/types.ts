@@ -13,6 +13,6 @@ export type Product = {
 export type Order = {
   id: string; buyer_id: string; product_id: string; seller_id: string;
   amount_cents: number; status: "pending" | "paid" | "failed" | "refunded";
-  stripe_session_id: string | null; stripe_subscription_id: string | null;
+  stripe_session_id: string | null; stripe_subscription_id: string | null; membership_status: "active" | "inactive";
   created_at: string; product?: Product;
 };
