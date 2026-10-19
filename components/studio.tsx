@@ -70,7 +70,7 @@ export default function Studio({userId,userEmail,initialStore,initialStores,plat
    const result=await response.json();
    if(!response.ok)throw new Error(result.error||"Could not save product");
    setProducts(old=>[result.product as Product,...old]);setTitle("");setDescription("");setPrice("");setStock("");setImage(null);setFile(null);
-   setNotice(publishNow?"Product published and saved.":"Draft saved to Supabase.");
+   setNotice(studioAccess==="creator"?"Submitted for review.":publishNow?"Product published and saved.":"Draft saved to Supabase.");
   }catch(e){setError(e instanceof Error?e.message:"Upload failed");}finally{setBusy(false);}
  }
  async function saveAppearance(e:React.FormEvent) {

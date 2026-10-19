@@ -2,7 +2,7 @@
 import {useState} from "react";
 import {Check,Pencil,LoaderCircle} from "lucide-react";
 import type {Product} from "@/lib/types";
-export default function ListingEditor({product,onSaved}:{product:Product,onSaved:(product:Product)=>void}){
+export default function ListingEditor({product,onSaved,canPublish=true}:{product:Product;canPublish?:boolean;onSaved:(product:Product)=>void}){
  const [open,setOpen]=useState(false);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
@@ -18,7 +18,7 @@ export default function ListingEditor({product,onSaved}:{product:Product,onSaved
  try{
  const res=await fetch("/api/studio/products/"+product.id,{
  method:"PATCH",headers:{"Content-Type":"application/json"},
- body:JSON.stringify({title,description,price_cents:cents,published,stock_quantity:stock===""?null:Number(stock)})
+ body:JSON.stringify({title,description,price_cents:cents,...(canPublish?{published}:{}),stock_quantity:stock===""?null:Number(stock)})
  });
  const body=await res.json();
  if(!res.ok)throw new Error(body.error||"Could not save");
@@ -33,7 +33,7 @@ export default function ListingEditor({product,onSaved}:{product:Product,onSaved
    <label>Description<textarea maxLength={10000} value={description} onChange={e=>setDescription(e.target.value)}/></label>
    <label>Price (USD)<input type="number" min={product.kind==="membership"?"1":"0"} max="500000" step=".01" required value={price} onChange={e=>setPrice(e.target.value)}/></label>
    {product.kind!=="membership"&&<label>Stock (blank = unlimited)<input type="number" min="0" step="1" value={stock} onChange={e=>setStock(e.target.value)}/></label>}
-   <label className="checkbox-row"><input type="checkbox" checked={published} onChange={e=>setPublished(e.target.checked)}/> Public listing</label>
+   {canPublish?<label className="checkbox-row"><input type="checkbox" checked={published} onChange={e=>setPublished(e.target.checked)}/> Public listing</label>:<p className="tiny-note">Your edits go back into review before they become public.</p>}
    {error&&<p role="alert" className="form-error">{error}</p>}
    <button className="button button-primary" type="submit" disabled={busy}>{busy?<LoaderCircle className="spin" size={15}/>:<Check size={15}/>} Save listing</button>
   </form>}

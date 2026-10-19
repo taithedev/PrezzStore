@@ -7,7 +7,7 @@ export type Store = {
 export type Product = {
   id: string; store_id: string; title: string; slug: string; description: string | null;
   category: string; image_url: string | null; price_cents: number; kind: ProductKind;
-  file_path: string | null; published: boolean; stock_quantity?: number | null; removed_at?:string|null; asset_owner_id?:string|null; created_at: string;
+  file_path: string | null; published: boolean; stock_quantity?: number | null; removed_at?:string|null; asset_owner_id?:string|null; submitted_by?:string|null; review_status?:"pending"|"approved"|"changes_requested"; created_at: string;
   store?: Store; demo?: boolean;
 };
 export type Order = {

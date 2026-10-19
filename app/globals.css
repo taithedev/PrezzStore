@@ -139,3 +139,41 @@ html[data-prezz-density="compact"] .product-card{border-radius:12px;}
 @media(max-width:800px){.tool-list{grid-template-columns:repeat(2,minmax(0,1fr))}.console-grid{grid-template-columns:1fr}.announcement-banner{padding-inline:16px}.announcement-banner>div{display:block}}
 @media(max-width:480px){.tool-list{grid-template-columns:1fr}.receipt-section{flex-wrap:wrap}}
 @media print{.site-header,.footer,.announcement-banner,.receipt-print{display:none!important}.receipt-sheet{border:0!important;background:#fff!important;color:#000!important}body{background:#fff!important;color:#000!important}}
+
+/* Creator+ and collaboration additions. The original marketplace styling is retained. */
+.account-nav{white-space:nowrap}
+.account-screen{max-width:1150px}
+.account-heading{display:flex;gap:22px;align-items:center;margin:0 0 28px}
+.account-avatar{height:72px;width:72px;border-radius:22px;background:#ab8bff1a;border:1px solid #ab8bff55;display:grid;place-items:center;color:#c8b5ff}
+.account-heading h1{font-size:clamp(30px,4vw,46px);margin:10px 0}.account-heading p{color:var(--muted)}
+.account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.account-grid .studio-panel h2{display:flex;align-items:center;gap:9px}
+.account-detail{display:flex;justify-content:space-between;gap:20px;align-items:center;border-bottom:1px solid var(--line);padding:14px 0;font-size:13px}
+.account-detail span{color:var(--muted)}.account-detail strong{text-align:right;overflow-wrap:anywhere}
+.account-grid .button{margin-top:22px}
+.account-points{display:block;font-size:42px;letter-spacing:-1px;margin:13px 0}
+.account-actions{display:flex;flex-direction:column;gap:13px}.account-actions a{display:flex;align-items:center;gap:11px;color:#ded8f1}
+.creator-plus-kicker{display:inline-flex;align-items:center;gap:7px;letter-spacing:1px;font-size:11px;font-weight:800;color:#c4afff;margin:6px 0 18px}
+.creator-plus-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#dbcfff;background:#a78bfa1c;border:1px solid #b69afa55;border-radius:999px;padding:7px 10px;margin:0 0 12px}
+.creator-plus-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin:25px 0}
+.creator-plus-benefits>div{background:#ffffff07;border:1px solid var(--line);border-radius:16px;padding:25px}
+.creator-plus-benefits svg{color:#baa4ff}.creator-plus-benefits strong{display:block;margin:14px 0 9px}
+.creator-plus-benefits p{font-size:13px;line-height:1.7;color:var(--muted)}
+.creator-plus-requirements{list-style:none;margin:25px 0;padding:0;display:flex;flex-direction:column;gap:15px}
+.creator-plus-requirements li{display:flex;align-items:center;gap:10px}.creator-plus-requirements svg{color:#bca8fa;flex:none}
+.creator-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin:20px 0}
+.creator-stats>div{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:13px;border:1px solid var(--line);background:#ffffff05}
+.creator-stats svg{color:#c4b0ff}.creator-stats small{color:var(--muted)}.creator-stats strong{font-size:24px}
+.creator-progress{display:grid;gap:18px;margin:26px 0}.creator-progress-head{display:flex;gap:10px;align-items:center;font-size:12px;margin-bottom:9px}
+.creator-progress-head span{flex:1;color:#e9e5f1}.creator-progress-head strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.creator-progress-track{height:7px;border-radius:12px;background:#ffffff16;overflow:hidden}.creator-progress-track span{display:block;height:100%;background:#a989ff;border-radius:12px}
+.team-role-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}
+.team-role-grid>div{border-radius:13px;background:#ffffff06;padding:16px;border:1px solid var(--line)}
+.team-role-grid svg{color:#bda8ff}.team-role-grid strong{display:block;margin:8px 0}.team-role-grid p{font-size:12px;line-height:1.65;color:var(--muted)}
+.team-capacity{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;margin:24px 0 13px}.team-capacity small{color:var(--muted)}
+.team-members{margin:14px 0}.team-member{display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid var(--line);padding:14px 0}
+.team-member strong{display:block;font-size:13px;overflow-wrap:anywhere}.team-member small{display:block;color:var(--muted);margin-top:6px}
+.team-invite{border-top:1px solid var(--line);padding-top:23px;margin-top:28px}
+.review-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.review-actions .button{min-height:34px;padding:6px 10px;font-size:12px}
+@media(max-width:860px){.account-grid,.creator-plus-benefits{grid-template-columns:1fr}.team-role-grid{grid-template-columns:1fr}.creator-stats{grid-template-columns:1fr}}
+@media(max-width:540px){.account-heading{align-items:flex-start}.account-avatar{width:54px;height:54px}.team-capacity{align-items:flex-start;flex-direction:column}.nav-actions{gap:9px}.account-nav{font-size:0!important;gap:0!important}.account-nav svg{width:19px;height:19px}}
