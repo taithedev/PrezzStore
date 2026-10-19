@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
-import { canManageStore, platformRole } from "@/lib/authority";
+import { canCreateProduct, studioRole, platformRole } from "@/lib/authority";
 import { moderationReason } from "@/lib/moderation";
 export const runtime="nodejs";
 const slugify=(s:string)=>s.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,75);
@@ -26,7 +26,9 @@ export async function POST(request:NextRequest){
   ||(filePath&&!filePath.startsWith(user.id+"/"))
   ||(imagePath&&imagePath.includes(".."))||(filePath&&filePath.includes("..")))
  return NextResponse.json({error:"Check the listing, stock and uploads"},{status:400});
- if(!await canManageStore(user,storeId))return NextResponse.json({error:"You cannot manage this store"},{status:403});
+ if(!await canCreateProduct(user,storeId))return NextResponse.json({error:"You cannot manage this store"},{status:403});
+ const role=await studioRole(user,storeId);
+ const creatorOnly=role==="creator";
  const reason=moderationReason(title,description);
  const override=body.moderationOverride===true&&Boolean(await platformRole(user));
  if(reason&&!override)return NextResponse.json({error:"Listing needs review: "+reason},{status:422});
@@ -37,7 +39,7 @@ export async function POST(request:NextRequest){
   store_id:store.id,title,slug:slugify(title)+"-"+crypto.randomUUID().slice(0,8),
   description,category:kind==="membership"?"Memberships":category,
   price_cents:price,kind,image_url:imagePath?(db.storage.from("prezzstore_assets").getPublicUrl(imagePath).data.publicUrl):null,
-  file_path:filePath,asset_owner_id:user.id,stock_quantity:kind==="membership"?null:stock,published
+  file_path:filePath,asset_owner_id:user.id,submitted_by:user.id,review_status:creatorOnly?"pending":"approved",stock_quantity:kind==="membership"?null:stock,published:creatorOnly?false:published
  }).select("*").single();
  if(error)return NextResponse.json({error:"Could not save listing"},{status:502});
  if(reason&&override)await db.from("prezzstore_moderation_log").insert({moderator_id:user.id,target_type:"content",target_id:product.id,action:"approved_false_positive",note:reason});

@@ -60,9 +60,9 @@ export async function POST(request:NextRequest){
    return NextResponse.json({ok:true,message:hidden?"Listing/store removed from public view.":"Store/listing suspension lifted. Republish products separately."});
   }
   if(action==="manager"){
-   const storeId=body.store_id,email=String(body.email||"").trim().toLowerCase();
+   const storeId=String(body.store_id||""),email=String(body.email||"").trim().toLowerCase();
    if(!uuid(storeId)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail("Enter a valid store ID and account email");
-   if(!await canManageTeam(user,String(storeId)))return fail("Only a shop's owner can manage its staff",403);
+   if(!await canManageTeam(user,storeId))return fail("Only a shop's owner can manage its staff",403);
    const {data:uid,error:lookupError}=await db.rpc("prezzstore_verified_user_id",{p_email:email});
    if(lookupError)throw lookupError;
    if(!uid)return fail("No verified PrezzStore account with that email",404);
@@ -70,7 +70,7 @@ export async function POST(request:NextRequest){
     const {error}=await db.from("prezzstore_store_managers").delete().eq("store_id",storeId).eq("user_id",uid);
     if(error)throw error;
    }else{
-    const {error}=await db.from("prezzstore_store_managers").upsert({store_id:storeId,user_id:uid});
+    const {error}=await db.from("prezzstore_store_managers").upsert({store_id:storeId,user_id:uid,role:"manager"});
     if(error)throw error;
    }
    return NextResponse.json({ok:true,message:body.remove===true?"Manager access revoked.":"Manager access granted to the verified account."});

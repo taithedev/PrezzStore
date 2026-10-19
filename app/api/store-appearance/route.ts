@@ -1,6 +1,6 @@
 import { NextRequest,NextResponse } from "next/server";
 import { currentUser, admin } from "@/lib/supabase";
-import { canManageStore,platformRole } from "@/lib/authority";
+import { canEditStore,platformRole } from "@/lib/authority";
 import { moderationReason } from "@/lib/moderation";
 export async function PATCH(req:NextRequest){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
@@ -8,7 +8,7 @@ export async function PATCH(req:NextRequest){
  const storeId=String(body.store_id||""),description=String(body.description||"").trim();
  const accent=String(body.accent||"");
  const banner_url=body.banner_url===null?null:String(body.banner_url||"");
- if(!await canManageStore(user,storeId))return NextResponse.json({error:"Not a manager of this store"},{status:403});
+ if(!await canEditStore(user,storeId))return NextResponse.json({error:"Not a manager of this store"},{status:403});
  if(description.length>1500||!/^#[0-9a-f]{6}$/i.test(accent)||(banner_url?.length??0)>2048)return NextResponse.json({error:"Invalid store appearance"},{status:400});
  const reason=moderationReason(description);
  if(reason && !(body.moderationOverride===true && await platformRole(user)))return NextResponse.json({error:"Text requires review: "+reason},{status:422});
