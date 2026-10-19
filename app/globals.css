@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Sniglet:wght@400;800&display=swap');
 :root{color-scheme:dark;--bg:#0b0b10;--panel:#12121a;--panel2:#171720;--line:#ffffff13;--text:#f6f5fb;--muted:#9695a7;--purple:#ac8cff;--store-accent:#ac8cff}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;font-size:15px;min-height:100vh;-webkit-font-smoothing:antialiased}h1,h2,h3,h4,p{margin-top:0}h1,h2,h3,.wordmark{font-family:'Space Grotesk',system-ui,sans-serif}a{color:inherit;text-decoration:none}button,input,textarea,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}input,textarea,select{color:var(--text)}::selection{background:#9471ef73;color:white}.shell{max-width:1230px;width:calc(100% - 72px);margin-inline:auto}.muted-text{color:var(--muted)}
 .site-header{position:sticky;top:0;z-index:50;background:#0b0b10dd;backdrop-filter:blur(24px);border-bottom:1px solid #ffffff0e}.nav{height:82px;display:flex;align-items:center;justify-content:space-between;gap:24px}.wordmark{font-size:23px;font-weight:800;letter-spacing:-1.2px;display:inline-flex;align-items:center;gap:9px;white-space:nowrap}.brand-mark{width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,#cbb8ff,#7d4fe8);color:#160b33;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 22px #966aff3a}.brand-accent{color:var(--purple);margin-left:-9px}.nav-links,.nav-actions{display:flex;align-items:center;gap:35px}.nav-links a,.nav-small{color:#b5b3c4;font-size:13px;font-weight:700;transition:color .2s}.nav-links a:hover,.nav-small:hover{color:#fff}.nav-small{display:flex;align-items:center;gap:8px}.nav-actions{gap:23px}
@@ -177,3 +177,48 @@ html[data-prezz-density="compact"] .product-card{border-radius:12px;}
 .review-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.review-actions .button{min-height:34px;padding:6px 10px;font-size:12px}
 @media(max-width:860px){.account-grid,.creator-plus-benefits{grid-template-columns:1fr}.team-role-grid{grid-template-columns:1fr}.creator-stats{grid-template-columns:1fr}}
 @media(max-width:540px){.account-heading{align-items:flex-start}.account-avatar{width:54px;height:54px}.team-capacity{align-items:flex-start;flex-direction:column}.nav-actions{gap:9px}.account-nav{font-size:0!important;gap:0!important}.account-nav svg{width:19px;height:19px}}
+
+/* OLED refinement – true dark surfaces, cleaner outlines and improved contrast. */
+:root{--bg:#050507;--panel:#0b0b0e;--panel2:#131317;--line:#ffffff20;--muted:#aaa7b9}
+html{background:#050507}
+body{background:var(--bg)}
+.site-header{background:#050507ef;border-bottom-color:#ffffff17;backdrop-filter:blur(22px)}
+.studio-sidebar,.studio-panel,.setup-card,.order-row{background:#0c0c10;border-color:#ffffff1c}
+.dashboard-product,.studio-panel .form-stack input:not([type=file]):not([type=color]),.studio-panel textarea,
+.studio-panel select{background:#111116}
+.public-profile-head,.owner-studio-admin,.profile-editor>.studio-panel{border:1px solid #ffffff1c;background:#09090c}
+.product-card{border:1px solid transparent;border-radius:18px;padding:8px;transition:transform .2s,border-color .2s,background .2s}
+.product-card:hover{border-color:#ffffff26;background:#ffffff06;transform:translateY(-2px)}
+.product-cover{border-color:#ffffff24}
+.button-danger{border-color:#d66d8655;background:#ca3f5d18;color:#ffb6c4}
+.button-danger:hover{background:#cb36572b;border-color:#ef7896}
+.owner-symbol{color:#c6b0ff;display:inline-block;vertical-align:middle;flex:none;filter:drop-shadow(0 0 6px #aa7cff65)}
+.verified-symbol{color:#75c2ff;display:inline-block;vertical-align:middle;flex:none}
+.eyebrow-small{display:inline-flex;gap:5px;align-items:center}
+.profile-section{margin-top:45px;border-top:1px solid var(--line);padding-top:30px}
+.profile-section .inner-hero h2{font-size:clamp(29px,3.4vw,42px);letter-spacing:-1px;margin:14px 0 8px}
+.profile-section .inner-hero p{color:var(--muted);font-size:14px}
+.profile-editor{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.profile-editor>.studio-panel:last-child{grid-column:1/-1}
+.profile-editor .studio-panel>h2{display:flex;align-items:center;gap:9px}
+.profile-editor .studio-panel .text-link{margin-top:18px}
+.public-profile-head{border-radius:22px;padding:36px;display:flex;align-items:center;gap:25px;box-shadow:0 18px 55px #0005}
+.public-profile-head h1{font-size:clamp(36px,4vw,57px);letter-spacing:-2px;margin:14px 0}
+.public-profile-head p{color:var(--muted);line-height:1.7;white-space:pre-wrap;margin:0}
+.profile-symbol{display:grid;place-items:center;min-height:95px;min-width:95px;background:linear-gradient(160deg,#34214c,#15111b);border:1px solid #be97ff44;color:#d6bdff;border-radius:25px}
+.profile-editor h2,.creator-plus-badge,.studio-removal h3{font-family:'Sniglet','Space Grotesk',system-ui,sans-serif;font-weight:400;letter-spacing:0}
+.creator-plus-badge{font-size:12px}
+.public-profile-head .section-tag{letter-spacing:1px}
+.studio-removal{margin-top:22px;border:1px solid #f0757f2e;border-radius:14px;background:#5c122010;padding:19px}
+.studio-removal h3{display:flex;align-items:center;gap:8px;color:#ffa8ba}
+.studio-removal p{font-size:13px;color:var(--muted);line-height:1.7}
+.studio-removal label,.owner-studio-admin>label{display:grid;gap:9px;margin:17px 0;color:var(--muted);font-size:13px}
+.studio-removal input,.owner-studio-admin select{background:#15151a;border:1px solid #ffffff29;color:var(--text);border-radius:10px;padding:12px;width:100%}
+.studio-removal strong{color:#f3edf7}
+.owner-studio-admin{margin-top:25px}.archived-studios{padding:15px 0}.archived-studios h3{font-size:15px}
+.archived-studios .studio-removal{background:transparent;border:0;padding:0;margin:0}
+.archived-studios .studio-removal>span{display:none}
+.archived-studios .button{font-size:11px;min-height:34px;padding:8px}
+.product-meta .price{font-variant-numeric:tabular-nums}
+@media(max-width:800px){.profile-editor{grid-template-columns:1fr}.profile-editor>.studio-panel:last-child{grid-column:auto}}
+@media(max-width:540px){.public-profile-head{align-items:flex-start;flex-direction:column;padding:24px}.profile-symbol{min-height:66px;min-width:66px}.dash-head-actions{flex-wrap:wrap}.studio-removal{padding:14px}}

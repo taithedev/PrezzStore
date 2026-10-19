@@ -83,7 +83,7 @@ export async function POST(request:NextRequest){
   if(action==="verify_user"){
    if(role!=="owner")return fail("Only marketplace owners can verify user profiles",403);
    const email=String(body.email||"").trim().toLowerCase(),verify=body.verify===true;
-   if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>254)return fail("Enter a valid registered email");
+   if(!/^[^\s@]+@[^\s@]+\\.[^\s@]+$/.test(email)||email.length>254)return fail("Enter a valid registered email");
    const {data:userId,error:lookupError}=await db.rpc("prezzstore_verified_user_id",{p_email:email});
    if(lookupError)throw lookupError;
    if(!userId)return fail("That email must belong to a confirmed PrezzStore account",404);
