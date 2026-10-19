@@ -24,7 +24,7 @@ export async function studioRole(user:SessionUser, storeId:string):Promise<Studi
   const {data:staff,error:staffError}=await admin().from("prezzstore_store_managers")
     .select("role").eq("store_id",storeId).eq("user_id",user.id).maybeSingle();
   if(staffError)throw staffError;
-  return ["manager","reviewer","creator"].includes(staff?.role||"") ? staff.role as StudioRole : null;
+  return staff && ["manager","reviewer","creator"].includes(staff.role) ? staff.role as StudioRole : null;
 }
 export async function canManageStore(user:SessionUser,storeId:string):Promise<boolean>{
   return !!(await studioRole(user,storeId));
