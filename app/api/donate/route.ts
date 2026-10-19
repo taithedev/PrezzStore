@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 /** Accept only ordinary USD amounts ($1.00–$500.00), never floating-point monetary math. */
 function parseAmountCents(input: FormDataEntryValue | null): number | null {
-  if (typeof input !== "string" || !/^(?:0|[1-9][0-9]{0,2})(?:\\.[0-9]{1,2})?$/.test(input.trim())) return null;
+  if (typeof input !== "string" || !/^(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,2})?$/.test(input.trim())) return null;
   const [dollars, fraction = ""] = input.trim().split(".");
   const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
   return Number.isInteger(cents) && cents >= 100 && cents <= 50000 ? cents : null;
