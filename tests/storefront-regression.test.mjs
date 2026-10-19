@@ -139,3 +139,36 @@ test("homepage uses concise product language rather than template slogans",()=>{
  assert.doesNotMatch(page,/YOUR NEXT CHAPTER STARTS HERE|WHY PREZZSTORE|Make something\./);
  assert.doesNotMatch(grid,/MADE BY CREATORS|Find your next favorite thing/);
 });
+
+test("Studio roles guard user-visible operations and data",()=>{
+ const roles=read("lib/authority.ts"),dashboard=read("app/dashboard/page.tsx"),create=read("app/api/studio/products/route.ts");
+ const edit=read("app/api/studio/products/[id]/route.ts"),review=read("app/api/studio/products/[id]/review/route.ts");
+ assert.match(roles,/studioRole/);assert.match(roles,/canEditStore/);
+ assert.match(dashboard,/studioAccess==="creator"/);
+ assert.match(dashboard,/submitted_by",user.id/);
+ assert.match(dashboard,/studioAccess==="owner"\|\|studioAccess==="manager"/);
+ assert.match(create,/creatorOnly\?false:published/);
+ assert.match(edit,/role==="creator"/);
+ assert.match(edit,/product.submitted_by!==user.id/);
+ assert.match(review,/canApproveProduct/);
+ assert.match(review,/moderationReason/);
+});
+test("PrezzCreator+ fee is computed from verified store performance",()=>{
+ const code=read("lib/creator-plus.ts"),checkout=read("app/api/checkout/route.ts");
+ const migration=read("supabase/migrations/005_prezzstore_creator_plus_collaboration.sql");
+ assert.match(migration,/stripe_session_id is not null/);
+ assert.match(migration,/g.revenue>=5000/);
+ assert.match(migration,/g.purchases>=3/);
+ assert.match(migration,/g.buyers>=2/);
+ assert.match(code,/Math.min\(base,500\)/);
+ assert.match(code,/qualified\?10:3/);
+ assert.match(checkout,/creatorPlusStatus\(product.store_id\)/);
+ assert.match(checkout,/creatorPlusFeeBps\(baseBps,tier.qualified\)/);
+});
+test("Team collaborators require confirmed users and owner authorization",()=>{
+ const route=read("app/api/studio/team/route.ts"),roles=read("lib/authority.ts");
+ assert.match(route,/canManageTeam\(user,storeId\)/);
+ assert.match(route,/prezzstore_verified_user_id/);
+ assert.match(route,/prezzstore_assign_collaborator/);
+ assert.match(roles,/staff.role/);
+});

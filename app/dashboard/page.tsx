@@ -37,14 +37,20 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<{st
    plus=await creatorPlusStatus(store.id);
    const {data:feeSetting}=await db.from("prezzstore_platform_settings").select("number_value").eq("name","commission_bps").maybeSingle();
    baseBps=feeSetting?.number_value??1000;
-   const {data:p}=await db.from("prezzstore_products").select("*").eq("store_id",store.id)
+   let listingQuery=db.from("prezzstore_products").select("*").eq("store_id",store.id)
     .order("created_at",{ascending:false}).limit(200);
+   // Creators must not receive another creator's private drafts in the client payload.
+   if(studioAccess==="creator")listingQuery=listingQuery.eq("submitted_by",user.id);
+   const {data:p}=await listingQuery;
    products=(p||[]) as Product[];
-   const {data:orders}=await db.from("prezzstore_orders")
-    .select("id,amount_cents,status,created_at,product:prezzstore_products!inner(title,store_id)")
-    .eq("product.store_id",store.id).order("created_at",{ascending:false}).limit(50);
-   sales=(orders||[]).map(row=>({id:row.id,amount_cents:row.amount_cents,status:row.status,created_at:row.created_at,
-    title:Array.isArray(row.product)?row.product[0]?.title||"Product":(row.product as {title?:string}|null)?.title||"Product"}));
+   // Sales data is financially sensitive; do not send it to creators or reviewers.
+   if(studioAccess==="owner"||studioAccess==="manager"){
+    const {data:orders}=await db.from("prezzstore_orders")
+     .select("id,amount_cents,status,created_at,product:prezzstore_products!inner(title,store_id)")
+     .eq("product.store_id",store.id).order("created_at",{ascending:false}).limit(50);
+    sales=(orders||[]).map(row=>({id:row.id,amount_cents:row.amount_cents,status:row.status,created_at:row.created_at,
+     title:Array.isArray(row.product)?row.product[0]?.title||"Product":(row.product as {title?:string}|null)?.title||"Product"}));
+   }
   }
  }
  return <Studio userId={user?.id||null} userEmail={user?.email||""} initialStore={store}

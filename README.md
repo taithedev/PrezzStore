@@ -124,3 +124,14 @@ For automatic transactional email, configure **both** RESEND_API_KEY and PREZZST
 For Stripe-managed paid payment receipts, enable Settings -> Customer emails -> Successful payments in the **same Stripe account** used by your deployment and verify Checkout has customer email. Stripe and Resend may send separate emails if both are turned on: select the option you prefer. Do not paste API secrets into GitHub or browser code.
 
 The email delivery integration is optional; if no verified Resend sender is configured, receipts remain accessible on screen but PrezzStore cannot directly send emails for free items. Set up a sender before promising automatic free-item emails.
+
+## Account, studio collaborators and PrezzCreator+
+
+- Authenticated header now exposes **My account** next to **My studio**. /account shows confirmed email, marketplace role, account links, connected studios and reward points.
+- Studio > **Collaborators** allows an owner to add **already registered and email-confirmed** users by exact email, change their role and remove access. This is a direct assignment, not an emailed invitation.
+- **Manager** can edit shop appearance, create/edit all shop listings and publish. **Reviewer** can approve a pending creator submission or request changes, but cannot edit products or the store. **Creator** can submit and edit only their own private products; edits remain unpublished until reviewed.
+- Regular studios may assign up to **3 collaborators**; eligible PrezzCreator+ studios may assign up to **10**. Permission enforcement is server-side; an atomic Postgres function handles seat allocation. Owners have separate access and cannot be removed through the team page. When a store loses qualification, existing collaborators remain until explicitly removed; the lower seat limit applies to new assignments.
+- `/creator-plus` documents the tier. Studio > PrezzCreator+ shows real rolling progress. To qualify, a store must be at least **14 days old**, have **2 published listings**, and **$50 in at least 3 paid, nonrefunded orders from 2 distinct buyers within the preceding 30 days**, and have no suspension. Free orders and refunds do not count. No paid subscription or activation key is required.
+- Qualified stores receive **5%** platform commission (or the lower configured standard fee), a PrezzCreator+ label on their storefront and **10 collaborator seats**. Platform owners retain their existing ability to change the standard rate. Eligibility is recomputed server-side for new Checkouts; **existing subscription fees do not automatically change** when eligibility changes.
+- Migrations `005_prezzstore_creator_plus_collaboration.sql` and `006_prezzstore_atomic_team_seats.sql` are applied to the shared **zuzify** project. Keep new PrezzStore SQL separate from other apps.
+- This feature does not bypass Stripe Connect seller identity requirements or enable live payments.
