@@ -15,7 +15,7 @@ export default async function Receipt({params}:{params:Promise<{id:string}>}){
  if(!order||!["paid","refunded"].includes(order.status))notFound();
  const prod=Array.isArray(order.product)?order.product[0]:order.product;
  const shop=prod?.store;
- const store=Array.isArray(shop)?shop[0]?.name:shop?.name;
+ const store=Array.isArray(shop)?shop[0]?.name:(shop as {name?:string}|null|undefined)?.name;
  return <div className="shell page-top"><Link className="back-link" href="/orders"><ArrowLeft size={16}/> All purchases</Link>
  <section className="receipt-sheet"><span className="section-tag"><ReceiptText size={16}/> PREZZSTORE / ORDER RECEIPT</span>
  <h1>Purchase receipt</h1><div className="receipt-section"><span>Order reference</span><strong>{order.id}</strong></div>
