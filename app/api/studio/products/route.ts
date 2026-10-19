@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { canCreateProduct, studioRole, platformRole, creatorEnrolled } from "@/lib/authority";
 import { moderationReason } from "@/lib/moderation";
+import {optionalDetails} from "@/lib/listing-options";
 export const runtime="nodejs";
-const slugify=(s:string)=>s.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,75);
+const slugify=(s:string)=>s.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,75)||"listing";
 export async function POST(request:NextRequest){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
  if(!await creatorEnrolled(user))return NextResponse.json({error:"Join the Creator Program from Account Settings first"},{status:403});
@@ -17,6 +18,11 @@ export async function POST(request:NextRequest){
  const filePath=body.file_path===null?null:String(body.file_path||"");
  const published=body.published===true;
  const stock=body.stock_quantity===null||body.stock_quantity===undefined||body.stock_quantity===""?null:body.stock_quantity;
+ let options:Record<string,string|string[]|null>;
+ try{options=optionalDetails(body);}catch(e){return NextResponse.json({error:(e as Error).message},{status:400});}
+ const gallery=body.gallery_paths??[];
+ if(!Array.isArray(gallery)||gallery.length>5||gallery.some(p=>typeof p!=="string"||!p.startsWith(user.id+"/")||p.includes("..")||!/^[a-zA-Z0-9._/-]+$/.test(p)))
+  return NextResponse.json({error:"Upload up to five gallery images to your account"},{status:400});
  if(title.length<3||title.length>120||description.length>10000||category.length<1||category.length>64
   ||!Number.isInteger(price)||Number(price)<0||Number(price)>50000000
   ||!["digital","membership","service"].includes(String(kind))
@@ -30,7 +36,7 @@ export async function POST(request:NextRequest){
  if(!await canCreateProduct(user,storeId))return NextResponse.json({error:"You cannot manage this store"},{status:403});
  const role=await studioRole(user,storeId);
  const creatorOnly=role==="creator";
- const reason=moderationReason(title,description);
+ const reason=moderationReason(title,description,options.subtitle,options.fulfillment_note,...((options.tags as string[])||[]),...((options.highlights as string[])||[]));
  const override=body.moderationOverride===true&&Boolean(await platformRole(user));
  if(reason&&!override)return NextResponse.json({error:"Listing needs review: "+reason},{status:422});
  const db=admin();
@@ -41,9 +47,11 @@ export async function POST(request:NextRequest){
   store_id:store.id,title,slug:slugify(title)+"-"+crypto.randomUUID().slice(0,8),
   description,category:kind==="membership"?"Memberships":category,
   price_cents:price,kind,image_url:imagePath?(db.storage.from("prezzstore_assets").getPublicUrl(imagePath).data.publicUrl):null,
-  file_path:filePath,asset_owner_id:user.id,submitted_by:user.id,review_status:creatorOnly?"pending":"approved",stock_quantity:kind==="membership"?null:stock,published:creatorOnly?false:published
+  file_path:filePath,asset_owner_id:user.id,submitted_by:user.id,review_status:creatorOnly?"pending":"approved",stock_quantity:kind==="membership"?null:stock,published:creatorOnly?false:published,
+  ...options,gallery_urls:gallery.map(p=>db.storage.from("prezzstore_assets").getPublicUrl(p).data.publicUrl)
  }).select("*").single();
- if(error)return NextResponse.json({error:"Could not save listing"},{status:502});
+ if(error){console.error("Listing insert:",error.code,error.message);
+  return NextResponse.json({error:error.code==="23514"?"A listing field did not meet the store rules":error.code==="23503"?"Your account or store is no longer available":"Could not save listing. Please retry.",code:error.code},{status:502});}
  if(reason&&override)await db.from("prezzstore_moderation_log").insert({moderator_id:user.id,target_type:"content",target_id:product.id,action:"approved_false_positive",note:reason});
  return NextResponse.json({product},{status:201});
 }

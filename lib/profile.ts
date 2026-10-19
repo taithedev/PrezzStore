@@ -27,17 +27,17 @@ export async function publicUserBadges(userIds:string[]):Promise<Map<string,User
 export async function ensureOwnProfile(user:SessionUser,{createStore=true}:{createStore?:boolean}={}){
  const db=admin();
  let {data:profile,error:profileError}=await db.from("prezzstore_user_profiles")
-  .select("user_id,display_name,bio").eq("user_id",user.id).maybeSingle();
+  .select("user_id,username,display_name,bio,avatar_url,banner_url,website_url").eq("user_id",user.id).maybeSingle();
  if(profileError)throw profileError;
  if(!profile){
   const nickname=String(user.user_metadata?.display_name||"Creator").trim().slice(0,50);
   const {data:added,error}=await db.from("prezzstore_user_profiles")
     .upsert({user_id:user.id,display_name:nickname.length>=2?nickname:"Creator"},{onConflict:"user_id",ignoreDuplicates:true})
-    .select("user_id,display_name,bio").maybeSingle();
+    .select("user_id,username,display_name,bio,avatar_url,banner_url,website_url").maybeSingle();
   if(error)throw error;
   profile=added;
   if(!profile){
-   const retry=await db.from("prezzstore_user_profiles").select("user_id,display_name,bio").eq("user_id",user.id).single();
+   const retry=await db.from("prezzstore_user_profiles").select("user_id,username,display_name,bio,avatar_url,banner_url,website_url").eq("user_id",user.id).single();
    if(retry.error)throw retry.error;
    profile=retry.data;
   }

@@ -135,3 +135,9 @@ The email delivery integration is optional; if no verified Resend sender is conf
 - Qualified stores receive **5%** platform commission (or the lower configured standard fee), a PrezzCreator+ label on their storefront and **10 collaborator seats**. Platform owners retain their existing ability to change the standard rate. Eligibility is recomputed server-side for new Checkouts; **existing subscription fees do not automatically change** when eligibility changes.
 - Migrations `005_prezzstore_creator_plus_collaboration.sql` and `006_prezzstore_atomic_team_seats.sql` are applied to the shared **zuzify** project. Keep new PrezzStore SQL separate from other apps.
 - This feature does not bypass Stripe Connect seller identity requirements or enable live payments.
+
+### Profiles, shops, and listing options
+
+The shop directory on the home and Discover pages includes every active studio, including studios with no published products. The official Zuzify shop appears first when its record exists. Every signed-in account can edit its public username, display name, bio, website, picture, and banner from My Account. Creator studios can separately set their shop name, picture, banner, description, and accent color. Product drafts may add an optional subtitle, tags, highlights, delivery details, and up to five gallery images. Uploaded images use the existing `prezzstore_assets` bucket and each account's own folder.
+
+Apply `supabase/migrations/011_prezzstore_profiles_listing_options.sql` before deploying the corresponding code. For paid purchases, configure the Stripe webhook at `/api/stripe/webhook` with the signing secret in `STRIPE_WEBHOOK_SECRET`. Subscribe it to Checkout completion and asynchronous success/failure, expiration, subscription changes, invoice payment failure, and charge refunds handled by the route. Keep `PREZZSTORE_LIVE_PAYMENTS_ENABLED` disabled until the Stripe platform and seller accounts are eligible and the webhook has been tested.

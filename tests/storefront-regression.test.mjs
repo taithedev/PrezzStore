@@ -218,8 +218,7 @@ test("Official Zuzify store is featured without fabricated products",()=>{
 test("Account does not create studios for ordinary buyers",()=>{
  const account=read("app/account/page.tsx");
  const profile=read("lib/profile.ts");
- assert.match(account,/if\(creator\)/);
- assert.match(account,/own=await ensureOwnProfile\(user\)/);
+ assert.match(account,/ensureOwnProfile\(user,\{createStore:creator\}\)/);
  assert.match(account,/profileStore\?/);
  assert.match(profile,/createStore=true/);
  assert.match(profile,/!store && !createStore/);
