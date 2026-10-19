@@ -16,6 +16,12 @@ export async function creatorPlusStatus(storeId:string):Promise<CreatorPlusStatu
   if(error)throw error;
   const status=Array.isArray(data)?data[0]:data;
   if(!status)throw new Error("Store eligibility could not be evaluated");
+  const {data:store,error:storeError}=await admin().from("prezzstore_stores").select("owner_id").eq("id",storeId).maybeSingle();
+  if(storeError)throw storeError;
+  const {data:grant,error:grantError}=store?.owner_id
+    ?await admin().from("prezzstore_creator_plus_grants").select("user_id").eq("user_id",store.owner_id).maybeSingle()
+    :{data:null,error:null};
+  if(grantError)throw grantError;
   return {
     sales_30d_cents:Number(status.sales_30d_cents)||0,
     sales_30d_count:Number(status.sales_30d_count)||0,
@@ -23,7 +29,7 @@ export async function creatorPlusStatus(storeId:string):Promise<CreatorPlusStatu
     published_listings:Number(status.published_listings)||0,
     store_age_days:Number(status.store_age_days)||0,
     active_store:status.active_store===true,
-    qualified:status.qualified===true
+    qualified:status.qualified===true || !!grant
   };
 }
 export function creatorPlusFeeBps(base:number,qualified:boolean):number{
