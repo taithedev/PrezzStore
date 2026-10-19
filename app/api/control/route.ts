@@ -48,6 +48,10 @@ export async function POST(request:NextRequest){
   if(action==="moderate"){
    const target=body.target, id=body.id, hidden=body.hidden===true;
    if(!uuid(id)||!["store","product"].includes(String(target)))return fail("Supply a valid target ID");
+   if(target==="store"){
+    const {data:match}=await db.from("prezzstore_stores").select("slug").eq("id",id).maybeSingle();
+    if(match?.slug==="zuzify"&&role!=="owner")return fail("Only an owner can moderate the official Zuzify store",403);
+   }
    const table=target==="store"?"prezzstore_stores":"prezzstore_products";
    const changes=target==="store"?{suspended_at:hidden?new Date().toISOString():null}:{removed_at:hidden?new Date().toISOString():null,published:false};
    const {error}=await db.from(table).update(changes).eq("id",id);

@@ -22,8 +22,8 @@ export default async function DonatePage({
     <Link className="back-link" href="/"><ArrowLeft size={16}/> Back to PrezzStore</Link>
     <section className="donate-panel">
       <span className="section-tag"><Heart size={15}/> SUPPORT THE PLATFORM</span>
-      <h1>Help PrezzStore grow.</h1>
-      <p className="donate-intro">Support the marketplace directly with a completely optional, one-time contribution. Your support helps with the costs of running PrezzStore.</p>
+      <h1>Support PrezzStore.</h1>
+      <p className="donate-intro">Optional one-time payments to help cover hosting, development and maintenance for PrezzStore.</p>
       {params.thanks === "1" && <p className="donate-notice" role="status">If you completed the payment, thank you. The payment is confirmed by Stripe separately from this page.</p>}
       {params.canceled === "1" && <p className="donate-notice" role="status">Your support checkout was canceled. No donation was recorded as paid.</p>}
       {errorText && <p className="donate-notice donate-error" role="alert">{errorText}</p>}
