@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { sendOrderReceipt } from "@/lib/receipt-email";
+import {platformRole} from "@/lib/authority";
 import {creatorPlusStatus,creatorPlusFeeBps} from "@/lib/creator-plus";
 import { marketplaceFeeBps, recipientStatus, siteUrl, stripe, stripeConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
@@ -20,10 +21,11 @@ export async function POST(request:NextRequest){
  const user=await currentUser();
  if(!user)return isForm?NextResponse.redirect(new URL("/login?next=/orders",request.url),303):reject("Sign in to purchase",401);
  if(!user.email)return reject("An email is required",400);
- let productId="",couponCode="";
+ let productId="",couponCode="",ownerFree=false;
  try{
    const body=contentType.includes("application/json")?await request.json():await request.formData();
    productId=body instanceof FormData?String(body.get("productId")??""):String(body.productId??"");
+   ownerFree=(body instanceof FormData?body.get("ownerFree"):body.ownerFree)=== "on" || (body instanceof FormData?body.get("ownerFree"):body.ownerFree)===true;
    couponCode=(body instanceof FormData?String(body.get("discountCode")??""):String(body.discountCode??"")).trim().toUpperCase();
  }catch{return reject("Invalid checkout request",400);}
  if(!/^[a-f0-9-]{36}$/i.test(productId)||couponCode.length>32)return reject("Invalid product or coupon",400);
@@ -45,6 +47,8 @@ export async function POST(request:NextRequest){
   if(!store||store.suspended_at||store.deleted_at)return reject("This seller is unavailable",409);
   if(store.is_profile_store&&product.kind==="membership")return reject("Subscriptions are only available in studios",400);
   if(store.owner_id===user.id)return reject("You cannot purchase your own product",400);
+  if(ownerFree && await platformRole(user)!=="owner")return reject("Owner-only checkout option",403);
+  if(ownerFree && product.kind==="membership")return reject("Recurring memberships cannot be obtained with owner free checkout",400);
   let finalPrice:number=product.price_cents,discountId:string|null=null;
   if(couponCode){
     if(!/^[A-Z0-9-]{4,32}$/.test(couponCode))return reject("Invalid discount code",400);
@@ -57,6 +61,7 @@ export async function POST(request:NextRequest){
     finalPrice=Math.max(0,product.price_cents-Math.round(product.price_cents*coupon.percentage/100));
     discountId=coupon.id;
   }
+  if(ownerFree){finalPrice=0;discountId=null;}
   if(finalPrice>0&&finalPrice<50)return reject("Discounted total must be at least $0.50",400);
   if(finalPrice>0){
     if(!stripeConfigured()||!process.env.STRIPE_WEBHOOK_SECRET||!process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -66,7 +71,7 @@ export async function POST(request:NextRequest){
   }
   const {data:order,error:oe}=await db.from("prezzstore_orders").insert({
    buyer_id:user.id,seller_id:store.owner_id,product_id:product.id,
-   amount_cents:finalPrice,status:"pending",discount_id:discountId
+   amount_cents:finalPrice,status:"pending",discount_id:discountId,owner_comped:ownerFree
   }).select("id").single();
   if(oe||!order)throw oe||new Error("Unable to create order");
   pendingOrderId=order.id;
