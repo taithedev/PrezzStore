@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { sendOrderReceipt } from "@/lib/receipt-email";
+import {creatorPlusStatus,creatorPlusFeeBps} from "@/lib/creator-plus";
 import { marketplaceFeeBps, recipientStatus, siteUrl, stripe, stripeConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
 
@@ -98,7 +99,9 @@ export async function POST(request:NextRequest){
   }
 
   const recurring=product.kind==="membership";
-  const bps=await marketplaceFeeBps();
+  const baseBps=await marketplaceFeeBps();
+  const tier=await creatorPlusStatus(product.store_id);
+  const bps=creatorPlusFeeBps(baseBps,tier.qualified);
   const checkout=await stripe().checkout.sessions.create({
    mode:recurring?"subscription":"payment",
    customer_email:user.email,client_reference_id:order.id,
