@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { admin } from "@/lib/supabase";
-import { stripe, verifyStripeWebhook } from "@/lib/stripe";
+import { stripeForConnectAndWebhooks, verifyStripeWebhook } from "@/lib/stripe";
 import { sendOrderReceipt } from "@/lib/receipt-email";
 export const runtime = "nodejs";
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       const paymentIntent = typeof charge.payment_intent === "string"
         ? charge.payment_intent : charge.payment_intent?.id;
       if (paymentIntent && charge.refunded) {
-        const sessions = await stripe().checkout.sessions.list({ payment_intent: paymentIntent, limit: 100 });
+        const sessions = await stripeForConnectAndWebhooks().checkout.sessions.list({ payment_intent: paymentIntent, limit: 100 });
         for (const session of sessions.data) {
           if (session.metadata?.prezzstore_payment_type === "donation" && session.metadata.prezzstore_donation_id) {
             const { error } = await db.from("prezzstore_donations")

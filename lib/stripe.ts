@@ -1,17 +1,23 @@
 import Stripe from "stripe";
 
 let client: Stripe | undefined;
-/** Uses a server-only restricted Stripe key. Real payments require an explicit separate launch decision. */
-export function stripe(): Stripe {
+function platformClient(): Stripe {
   const key = (process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY);
   if (!key) throw new Error("Stripe sandbox key has not been configured");
   if (process.env.VERCEL_ENV === "production" && key.includes("_test_")) {
     throw new Error("Sandbox Stripe keys cannot be used for production payments");
   }
+  return (client ??= new Stripe(key, { apiVersion: "2026-08-26.dahlia" }));
+}
+
+/** New Checkout sessions require an explicit separate live launch decision. */
+export function stripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY;
+  if (!key) throw new Error("Stripe server key has not been configured");
   if (key.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED !== "true") {
     throw new Error("Live Stripe payments are disabled until the marketplace is approved for launch");
   }
-  return (client ??= new Stripe(key, { apiVersion: "2026-08-26.dahlia" }));
+  return platformClient();
 }
 
 export function stripeConfigured() {
@@ -20,6 +26,17 @@ export function stripeConfigured() {
     return Boolean(key?.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED === "true");
   }
   return Boolean(key && (key.includes("_test_") || (key.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED === "true")));
+}
+
+/** Connect onboarding and existing webhook reconciliation can run before Checkout launches. */
+export function stripeForConnectAndWebhooks(): Stripe {
+  return platformClient();
+}
+
+export function stripeConnectConfigured(): boolean {
+  const key = process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY;
+  return Boolean(key && (process.env.VERCEL_ENV === "production"
+    ? key.includes("_live_") : key.includes("_test_")));
 }
 
 /** Verify incoming events even while new live Checkout sessions are disabled. */
@@ -67,7 +84,7 @@ export async function recipientStatus(accountId: string): Promise<RecipientStatu
   if (!/^acct_[A-Za-z0-9]+$/.test(accountId)) return "inactive";
   // The connected marketplace uses the Accounts v1 controller-properties API
   // because Stripe has not enabled Accounts v2 for this platform.
-  const account = await stripe().accounts.retrieve(accountId);
+  const account = await stripeForConnectAndWebhooks().accounts.retrieve(accountId);
   const transfers = account.capabilities?.transfers;
   // A transfer capability alone does not prove the seller can be paid out.
   if (transfers === "active" && account.payouts_enabled) return "active";
@@ -85,7 +102,7 @@ export async function createRecipient(email: string, displayName: string, storeI
   // Official Stripe Accounts v1 controller-properties API. This still requires
   // Connect registration and Stripe identity / eligibility verification.
   // No identity information is invented or marked as verified by the platform.
-  const account = await stripe().accounts.create({
+  const account = await stripeForConnectAndWebhooks().accounts.create({
     email,
     country: (process.env.STRIPE_CONNECT_COUNTRY || "US").toUpperCase(),
     controller: {
@@ -104,7 +121,7 @@ export async function createOnboardingLink(accountId: string, storeId?:string): 
   if (!/^acct_[A-Za-z0-9]+$/.test(accountId)) throw new Error("Invalid Stripe account identifier");
   const url = siteUrl();
   const studioQuery=storeId&&/^[0-9a-f-]{36}$/i.test(storeId)?"?store_id="+storeId:"";
-  const result = await stripe().accountLinks.create({
+  const result = await stripeForConnectAndWebhooks().accountLinks.create({
     account: accountId,
     type: "account_onboarding",
     refresh_url: url + "/api/stripe/connect/refresh" + studioQuery,

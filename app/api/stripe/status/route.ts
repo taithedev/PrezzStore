@@ -1,11 +1,11 @@
 import { NextRequest,NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
-import { recipientStatus, stripeConfigured } from "@/lib/stripe";
+import { recipientStatus, stripeConnectConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
 export async function GET(request:NextRequest) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-  const enabled = stripeConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const enabled = stripeConnectConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!enabled) return NextResponse.json({ configured: false, status: "not_configured" }, { headers: { "Cache-Control": "no-store" } });
   try {
     const selected=new URL(request.url).searchParams.get("store_id")||"";

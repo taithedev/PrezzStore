@@ -51,9 +51,10 @@ test("Stripe seller onboarding returns actionable errors and preserves account r
  assert.match(route,/createRecipient\(user\.email, store\.name, store\.id\)/);
  assert.doesNotMatch(route,/Unable to start Stripe onboarding\. Check sandbox/);
  assert.match(stripe,/idempotencyKey: "prezzstore_seller_v1_" \+ storeId/);
- assert.match(stripe,/stripe\(\)\.accountLinks\.create/);
- assert.match(stripe,/stripe\(\)\.accounts\.create/);
- assert.match(stripe,/stripe\(\)\.accounts\.retrieve/);
+ assert.match(stripe,/stripeForConnectAndWebhooks\(\)\.accountLinks\.create/);
+ assert.match(stripe,/stripeForConnectAndWebhooks\(\)\.accounts\.create/);
+ assert.match(stripe,/stripeForConnectAndWebhooks\(\)\.accounts\.retrieve/);
+ assert.match(route,/stripeConnectConfigured\(\)/);
  assert.match(stripe,/stripe_dashboard: \{ type: "express" \}/);
  assert.match(stripe,/capabilities: \{ transfers: \{ requested: true \} \}/);
  assert.match(stripe,/account\.payouts_enabled/);
