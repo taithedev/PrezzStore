@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { canManageTeam, platformRole, requireModerator } from "@/lib/authority";
 import { moderationReason } from "@/lib/moderation";
+import {creatorPlusStatus,collaboratorLimit} from "@/lib/creator-plus";
 export const runtime="nodejs";
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
 const uuid=(x:unknown)=>typeof x==="string"&&/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(x);
@@ -70,8 +71,12 @@ export async function POST(request:NextRequest){
     const {error}=await db.from("prezzstore_store_managers").delete().eq("store_id",storeId).eq("user_id",uid);
     if(error)throw error;
    }else{
-    const {error}=await db.from("prezzstore_store_managers").upsert({store_id:storeId,user_id:uid,role:"manager"});
+    const plus=await creatorPlusStatus(storeId);
+    const {data:assigned,error}=await db.rpc("prezzstore_assign_collaborator",{
+     p_store:storeId,p_user:uid,p_role:"manager",p_limit:collaboratorLimit(plus.qualified)
+    });
     if(error)throw error;
+    if(!assigned)return fail("Studio has reached its collaborator limit",409);
    }
    return NextResponse.json({ok:true,message:body.remove===true?"Manager access revoked.":"Manager access granted to the verified account."});
   }
