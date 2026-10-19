@@ -80,6 +80,29 @@ export async function POST(request:NextRequest){
    }
    return NextResponse.json({ok:true,message:body.remove===true?"Manager access revoked.":"Manager access granted to the verified account."});
   }
+  if(action==="verify_user"){
+   if(role!=="owner")return fail("Only marketplace owners can verify user profiles",403);
+   const email=String(body.email||"").trim().toLowerCase(),verify=body.verify===true;
+   if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)||email.length>254)return fail("Enter a valid registered email");
+   const {data:userId,error:lookupError}=await db.rpc("prezzstore_verified_user_id",{p_email:email});
+   if(lookupError)throw lookupError;
+   if(!userId)return fail("That email must belong to a confirmed PrezzStore account",404);
+   const {data:otherRole}=await db.from("prezzstore_platform_roles").select("role").eq("user_id",userId).maybeSingle();
+   if(otherRole?.role==="owner"&&!verify)return fail("Owner identity badges are managed by owner roles",403);
+   if(verify){
+    const {error}=await db.from("prezzstore_user_verifications").upsert({
+     user_id:userId,verified:true,verified_at:new Date().toISOString(),verified_by:user.id,note:"Owner verification"
+    },{onConflict:"user_id"});
+    if(error)throw error;
+   }else{
+    const {error}=await db.from("prezzstore_user_verifications").delete().eq("user_id",userId);
+    if(error)throw error;
+   }
+   await db.from("prezzstore_moderation_log").insert({
+    moderator_id:user.id,target_type:"content",action:verify?"verify_user":"unverify_user",note:"User verification changed"
+   });
+   return NextResponse.json({ok:true,message:verify?"User verified. Their profile displays a checkmark.":"User verification removed."});
+  }
   if(action==="admin"){
    if(role!=="owner")return fail("Only owners appoint administrators",403);
    const email=String(body.email||"").trim().toLowerCase();

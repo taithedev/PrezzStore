@@ -10,7 +10,7 @@ export default function MarketplaceConsole({role,commission,stores,products}:{ro
  const [announcementTitle,setAnnouncementTitle]=useState("");const [announcementBody,setAnnouncementBody]=useState("");
  const [category,setCategory]=useState("news");const [override,setOverride]=useState(false);
  const [managerStore,setManagerStore]=useState(stores.find(s=>s.label.includes("Zuzify"))?.id||stores[0]?.id||"");
- const [managerEmail,setManagerEmail]=useState("");const [adminEmail,setAdminEmail]=useState("");
+ const [managerEmail,setManagerEmail]=useState("");const [adminEmail,setAdminEmail]=useState("");const [verificationEmail,setVerificationEmail]=useState("");
  const [moderateTarget,setModerateTarget]=useState("product"),[moderateId,setModerateId]=useState("");
  const [message,setMessage]=useState("");const [busy,setBusy]=useState(false);
  async function submit(action:string,values:Record<string,unknown>){
@@ -56,7 +56,15 @@ export default function MarketplaceConsole({role,commission,stores,products}:{ro
       <label>Manager account email<input type="email" value={managerEmail} required onChange={e=>setManagerEmail(e.target.value)}/></label>
       <button disabled={busy} className="button button-secondary">Grant access</button></form>
      <button type="button" className="button button-ghost" disabled={busy} onClick={()=>submit("manager",{store_id:managerStore,email:managerEmail,remove:true})}>Revoke access</button></div>}
-    {role==="owner"&&<div className="console-field"><h3>Administrator permissions</h3>
+    {role==="owner"&&<div className="console-field"><h3>Verify creators</h3>
+    <p>Grant a checkmark to an account you have reviewed. Owners display a wrench instead.</p>
+    <form onSubmit={e=>{e.preventDefault();submit("verify_user",{email:verificationEmail,verify:true});}}>
+     <label>Registered account email<input type="email" required value={verificationEmail} onChange={e=>setVerificationEmail(e.target.value)}/></label>
+     <button type="submit" className="button button-secondary" disabled={busy}>Verify user</button>
+    </form>
+    <button type="button" className="button button-ghost" disabled={busy||!verificationEmail} onClick={()=>submit("verify_user",{email:verificationEmail,verify:false})}>Remove verification</button>
+   </div>}
+   {role==="owner"&&<div className="console-field"><h3>Administrator permissions</h3>
      <p>Admins can moderate stores/products and post news. Only owners can change fees or generate discounts.</p>
      <form onSubmit={e=>{e.preventDefault();submit("admin",{email:adminEmail});}}>
        <label>Account email<input type="email" required value={adminEmail} onChange={e=>setAdminEmail(e.target.value)}/></label>
