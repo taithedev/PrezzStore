@@ -3,7 +3,7 @@ import { ArrowLeft, ShieldCheck, Wallet } from "lucide-react";
 export default async function CheckoutUnavailable({searchParams}:{searchParams:Promise<{reason?:string}>}) {
  const reason=(await searchParams).reason;
  const message=reason==="setup"
-  ? "Payments are not available yet. The marketplace's Stripe sandbox and verified webhook need to be configured before checkout can start."
+  ? "Payments are not available yet. Please check back after marketplace payment setup is complete."
   :reason==="seller"
   ? "This creator is still completing payment onboarding. No payment was taken."
   :"We couldn't start checkout. No payment was taken. Please try again later.";

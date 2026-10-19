@@ -5,6 +5,9 @@ let client: Stripe | undefined;
 export function stripe(): Stripe {
   const key = (process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY);
   if (!key) throw new Error("Stripe sandbox key has not been configured");
+  if (process.env.VERCEL_ENV === "production" && key.includes("_test_")) {
+    throw new Error("Sandbox Stripe keys cannot be used for production payments");
+  }
   if (key.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED !== "true") {
     throw new Error("Live Stripe payments are disabled until the marketplace is approved for launch");
   }
@@ -13,6 +16,9 @@ export function stripe(): Stripe {
 
 export function stripeConfigured() {
   const key = process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY;
+  if (process.env.VERCEL_ENV === "production") {
+    return Boolean(key?.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED === "true");
+  }
   return Boolean(key && (key.includes("_test_") || (key.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED === "true")));
 }
 

@@ -43,7 +43,7 @@ export default async function DonatePage({
             <button className="button button-primary" type="submit">Continue <ArrowUpRight size={17}/></button>
           </div>
         </form>
-      </> : <div className="donate-unavailable">Support payments are in setup mode. Please check back once Stripe sandbox and the donation database are configured.</div>}
+      </> : <div className="donate-unavailable">Support payments are being set up. Please check back later.</div>}
       <p className="donate-disclaimer"><ShieldCheck size={16}/> Payments are securely processed by Stripe. Contributions go to PrezzStore, not marketplace sellers. They are voluntary, not charitable tax-deductible donations, and do not affect access to products.</p>
       <div className="donate-bottom"><LockKeyhole size={15}/> Stripe handles your payment details. PrezzStore never stores your card number.</div>
     </section>
