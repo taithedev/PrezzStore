@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {redirect} from "next/navigation";
-import {UserRound,ShieldCheck,ShoppingBag,Palette,Gift,Store,ArrowUpRight,Mail,Wrench,BadgeCheck} from "lucide-react";
+import {UserRound,ShieldCheck,ShoppingBag,Palette,Gift,Store,ArrowUpRight,Mail,Wrench,BadgeCheck,Settings2} from "lucide-react";
 import {admin,currentUser} from "@/lib/supabase";
 import {platformRole,creatorEnrolled} from "@/lib/authority";
 import CreatorJoin from "@/components/creator-join";
@@ -62,7 +62,7 @@ export default async function Account(){
    </section>
    <section className="studio-panel"><h2><ShieldCheck size={19}/> Preferences</h2>
     <p className="muted-text">Change your appearance settings, access purchases, and track account updates.</p>
-    <div className="account-actions">
+    <div className="account-actions"><Link href="/account/settings"><Settings2 size={17}/> Account settings / Creator Program</Link>
      <Link href="/appearance"><Palette size={17}/> Appearance</Link>
      <Link href="/orders"><ShoppingBag size={17}/> Purchases and receipts</Link>
      {creator&&<Link href="/creator-plus"><Store size={17}/> PrezzCreator+ requirements</Link>}

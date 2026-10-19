@@ -197,3 +197,20 @@ test("Public profile badges are owner role or server verified, never self-assign
  assert.match(profile,/prezzstore_user_verifications/);
  assert.match(db,/revoke insert,update,delete/);
 });
+
+test("Normal buyers must opt into Creator Program, with separate Creator+ tier",()=>{
+ const join=read("app/api/creator/join/route.ts"),dashboard=read("app/dashboard/page.tsx");
+ const migration=read("supabase/migrations/009_prezzstore_guard_creator_enrollment.sql");
+ const settings=read("app/account/settings/page.tsx");
+ assert.match(join,/email_confirmed_at/);
+ assert.match(join,/creator_enrolled:true/);
+ assert.match(dashboard,/creatorEnrolled\(user\)/);
+ assert.match(migration,/creator_enrolled=true/);
+ assert.match(settings,/CreatorJoin/);
+});
+test("Official Zuzify store is featured without fabricated products",()=>{
+ const page=read("app/page.tsx");
+ assert.match(page,/storeBySlug\("zuzify"\)/);
+ assert.match(page,/href="\/shop\/zuzify"/);
+ assert.match(page,/zuzify&&/);
+});
