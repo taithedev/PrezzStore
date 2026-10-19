@@ -11,14 +11,14 @@ test("dashboard reads isolated PrezzStore store and listing tables",()=>{
 test("seller listing changes verify ownership and restrict editable fields",()=>{
  const s=read("app/api/studio/products/[id]/route.ts");
  assert.match(s,/currentUser\(\)/);
- assert.match(s,/\.eq\("owner_id",user.id\)/);
+ assert.match(s,/canManageStore\(user,product.store_id\)/);
  assert.doesNotMatch(s,/updates\.file_path\s*=/);
  assert.doesNotMatch(s,/updates\.store_id\s*=/);
 });
 test("downloads require paid orders and seller-owned file paths",()=>{
  const s=read("app/api/download/[id]/route.ts");
  assert.match(s,/order.status!=="paid"/);
- assert.match(s,/product.file_path.startsWith\(order.seller_id\+"\/"\)/);
+ assert.match(s,/product.asset_owner_id\|\|order.seller_id/);
 });
 test("Stripe requires signing secret for checkout and live launch is gated",()=>{
  const s=read("app/api/checkout/route.ts"),keys=read("lib/stripe.ts");
@@ -108,4 +108,34 @@ test("optional platform support payments are validated and webhook-confirmed",()
  assert.match(webhook,/session.payment_status !== "paid"/);
  assert.match(migration,/enable row level security/);
  assert.match(migration,/service_role/);
+});
+
+test("verified storefront management and role controls are server-side",()=>{
+ const a=read("lib/authority.ts"),c=read("app/api/control/route.ts");
+ assert.match(a,/email_confirmed_at/);
+ assert.match(a,/ownerEmails/);
+ assert.match(a,/prezzstore_store_managers/);
+ assert.match(c,/role!=="owner"/);
+ assert.match(c,/prezzstore_verified_user_id/);
+});
+test("free product fulfillment, discounts and stock are server mediated",()=>{
+ const route=read("app/api/checkout/route.ts");
+ assert.match(route,/prezzstore_reserve_stock/);
+ assert.match(route,/prezzstore_claim_discount/);
+ assert.match(route,/finalPrice===0/);
+ assert.match(route,/marketplaceFeeBps/);
+ assert.match(route,/stock_quantity/);
+});
+test("authenticated screen receipts and optional email receipts",()=>{
+ const page=read("app/orders/receipt/[id]/page.tsx");
+ const email=read("lib/receipt-email.ts");
+ assert.match(page,/buyer_id",user.id/);
+ assert.match(page,/PrintReceipt/);
+ assert.match(email,/RESEND_API_KEY/);
+ assert.match(email,/prezzstore_order_receipt_emails/);
+});
+test("homepage uses concise product language rather than template slogans",()=>{
+ const page=read("app/page.tsx"),grid=read("components/market-grid.tsx");
+ assert.doesNotMatch(page,/YOUR NEXT CHAPTER STARTS HERE|WHY PREZZSTORE|Make something\./);
+ assert.doesNotMatch(grid,/MADE BY CREATORS|Find your next favorite thing/);
 });
