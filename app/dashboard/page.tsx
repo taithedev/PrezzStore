@@ -17,16 +17,16 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<{st
   const db=admin();
   role=await platformRole(user);
   const {data:owned}=await db.from("prezzstore_stores").select("*")
-    .eq("owner_id",user.id).order("created_at",{ascending:true});
+    .eq("owner_id",user.id).eq("is_profile_store",false).is("deleted_at",null).order("created_at",{ascending:true});
   const {data:staff}=await db.from("prezzstore_store_managers").select("store_id").eq("user_id",user.id);
   const ids=(staff||[]).map(x=>x.store_id);
   let visible:Store[]=(owned||[]) as Store[];
   if(ids.length){
-   const {data:delegated}=await db.from("prezzstore_stores").select("*").in("id",ids);
+   const {data:delegated}=await db.from("prezzstore_stores").select("*").in("id",ids).eq("is_profile_store",false).is("deleted_at",null);
    visible=visible.concat((delegated||[]) as Store[]);
   }
   if(role==="owner"){
-   const {data:zuzify}=await db.from("prezzstore_stores").select("*").eq("slug","zuzify").maybeSingle();
+   const {data:zuzify}=await db.from("prezzstore_stores").select("*").eq("slug","zuzify").is("deleted_at",null).maybeSingle();
    if(zuzify)visible.push(zuzify as Store);
   }
   stores=Array.from(new Map(visible.map(x=>[x.id,x])).values());
