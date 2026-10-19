@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest,NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { createRecipient, createOnboardingLink, stripeConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
@@ -87,7 +87,7 @@ function describeOnboardingFailure(error: unknown, step: OnboardingStep): { mess
 
 }
 
-export async function POST() {
+export async function POST(request:NextRequest) {
   const user = await currentUser();
   if (!user?.email) return NextResponse.json({ error: "Sign in to manage your store." }, { status: 401 });
   if (!stripeConfigured()) return NextResponse.json({ error: "Stripe sandbox is not configured yet." }, { status: 503 });
@@ -95,8 +95,19 @@ export async function POST() {
   let step: OnboardingStep = "read_store";
   try {
     const db = admin();
-    const { data: store, error: lookupError } = await db.from("prezzstore_stores")
-      .select("id,name,stripe_account_id").eq("owner_id", user.id).maybeSingle();
+    let selected="";
+    try{
+     const input=await request.json();
+     selected=String(input?.store_id||"");
+    }catch{}
+    if(selected&&!/^[0-9a-f-]{36}$/i.test(selected)){
+     return NextResponse.json({error:"Invalid store ID"},{status:400});
+    }
+    let query=db.from("prezzstore_stores").select("id,name,stripe_account_id")
+      .eq("owner_id",user.id).is("deleted_at",null);
+    if(selected)query=query.eq("id",selected);
+    else query=query.eq("is_profile_store",false).order("created_at",{ascending:true}).limit(1);
+    const {data:store,error:lookupError}=await query.maybeSingle();
     if (lookupError) throw lookupError;
     if (!store) return NextResponse.json({ error: "Create your store before connecting Stripe." }, { status: 404 });
     let accountId: string = store.stripe_account_id ?? "";
@@ -118,7 +129,7 @@ export async function POST() {
       }
     }
     step = "create_onboarding_link";
-    const url = await createOnboardingLink(accountId);
+    const url = await createOnboardingLink(accountId,store.id);
     return NextResponse.json({ url }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const failure = describeOnboardingFailure(error, step);

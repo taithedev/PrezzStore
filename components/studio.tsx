@@ -30,7 +30,7 @@ export default function Studio({userId,userEmail,initialStore,initialStores,plat
    if(tab!=="payouts"||!userId||!store)return;
    let current=true;
    setStripeStatus("checking");
-   fetch("/api/stripe/status",{cache:"no-store"}).then(async res=>{
+   fetch("/api/stripe/status?store_id="+encodeURIComponent(store.id),{cache:"no-store"}).then(async res=>{
      const result=await res.json();
      if(current)setStripeStatus(res.ok?(result.status||"error"):"error");
    }).catch(()=>{if(current)setStripeStatus("error");});
@@ -87,7 +87,7 @@ export default function Studio({userId,userEmail,initialStore,initialStores,plat
   }catch(e){setError(e instanceof Error?e.message:"Unable to save");}finally{setBusy(false);}
  }
  async function connect() {
-  setBusy(true);setError("");try{const result=await fetch("/api/stripe/connect",{method:"POST"});const data=await result.json();if(!result.ok||!data.url)throw new Error(data.error||"Stripe unavailable");window.location.assign(data.url);}catch(e){setError(e instanceof Error?e.message:"Onboarding failed");setBusy(false);}
+  setBusy(true);setError("");try{const result=await fetch("/api/stripe/connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({store_id:store?.id})});const data=await result.json();if(!result.ok||!data.url)throw new Error(data.error||"Stripe unavailable");window.location.assign(data.url);}catch(e){setError(e instanceof Error?e.message:"Onboarding failed");setBusy(false);}
  }
  async function reviewProduct(product:Product,decision:"approve"|"request_changes"){
   if(!canReview||!store)return;setBusy(true);setError("");setNotice("");

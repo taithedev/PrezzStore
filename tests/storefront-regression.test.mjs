@@ -163,7 +163,7 @@ test("PrezzCreator+ fee is computed from verified store performance",()=>{
  assert.match(code,/Math.min\(base,500\)/);
  assert.match(code,/qualified\?10:3/);
  assert.match(checkout,/creatorPlusStatus\(product.store_id\)/);
- assert.match(checkout,/creatorPlusFeeBps\(baseBps,tier.qualified\)/);
+ assert.match(checkout,/creatorPlusFeeBps\(baseBps,qualified\)/);
 });
 test("Team collaborators require confirmed users and owner authorization",()=>{
  const route=read("app/api/studio/team/route.ts"),roles=read("lib/authority.ts");
@@ -171,4 +171,29 @@ test("Team collaborators require confirmed users and owner authorization",()=>{
  assert.match(route,/prezzstore_verified_user_id/);
  assert.match(route,/prezzstore_assign_collaborator/);
  assert.match(roles,/staff.role/);
+});
+
+test("Profile subscriptions remain forbidden server side and in database",()=>{
+ const create=read("app/api/studio/products/route.ts");
+ const checkout=read("app/api/checkout/route.ts");
+ const profile=read("components/profile-listings.tsx");
+ const migration=read("supabase/migrations/007_prezzstore_profiles_and_studio_archive.sql");
+ assert.match(create,/store.is_profile_store&&kind==="membership"/);
+ assert.match(checkout,/store.is_profile_store&&product.kind==="membership"/);
+ assert.doesNotMatch(profile,/<option value="membership"/);
+ assert.match(migration,/prezzstore_profile_item_kind_guard/);
+});
+test("Owner may verify profile and studio removal never deletes historical orders",()=>{
+ const api=read("app/api/control/route.ts"),del=read("app/api/studio/stores/[id]/route.ts");
+ assert.match(api,/action==="verify_user"/);
+ assert.match(api,/role!=="owner"/);
+ assert.match(del,/confirm_name!==studio.name/);
+ assert.match(del,/deleted_at:new Date/);
+ assert.doesNotMatch(del,/delete\(\).*from\("prezzstore_orders"\)/);
+});
+test("Public profile badges are owner role or server verified, never self-assigned",()=>{
+ const profile=read("lib/profile.ts"),db=read("supabase/migrations/007_prezzstore_profiles_and_studio_archive.sql");
+ assert.match(profile,/prezzstore_platform_roles/);
+ assert.match(profile,/prezzstore_user_verifications/);
+ assert.match(db,/revoke insert,update,delete/);
 });

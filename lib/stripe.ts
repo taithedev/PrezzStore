@@ -85,14 +85,15 @@ export async function createRecipient(email: string, displayName: string, storeI
   return account.id;
 }
 
-export async function createOnboardingLink(accountId: string): Promise<string> {
+export async function createOnboardingLink(accountId: string, storeId?:string): Promise<string> {
   if (!/^acct_[A-Za-z0-9]+$/.test(accountId)) throw new Error("Invalid Stripe account identifier");
   const url = siteUrl();
+  const studioQuery=storeId&&/^[0-9a-f-]{36}$/i.test(storeId)?"?store_id="+storeId:"";
   const result = await stripe().accountLinks.create({
     account: accountId,
     type: "account_onboarding",
-    refresh_url: url + "/api/stripe/connect/refresh",
-    return_url: url + "/dashboard?stripe=returned"
+    refresh_url: url + "/api/stripe/connect/refresh" + studioQuery,
+    return_url: url + "/dashboard?stripe=returned" + (storeId?"&store="+storeId:"")
   });
   return result.url;
 }
