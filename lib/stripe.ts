@@ -28,6 +28,16 @@ export function siteUrl(): string {
   return url.origin;
 }
 
+export async function marketplaceFeeBps(): Promise<number> {
+  const { admin } = await import("@/lib/supabase");
+  const { data, error } = await admin().from("prezzstore_platform_settings")
+    .select("number_value").eq("name","commission_bps").single();
+  if(error)throw error;
+  const fee = data?.number_value;
+  if(!Number.isInteger(fee) || fee<0 || fee>3000)throw new Error("Invalid commission setting");
+  return fee;
+}
+/** Legacy environment fallback retained for separate deployments that haven't migrated. */
 export function feeBps(): number {
   const value = Number(process.env.PREZZSTORE_PLATFORM_FEE_BPS ?? "1000");
   if (!Number.isInteger(value) || value < 0 || value > 3000) {
