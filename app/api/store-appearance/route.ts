@@ -13,6 +13,8 @@ export async function PATCH(req:NextRequest){
  const reason=moderationReason(description);
  if(reason && !(body.moderationOverride===true && await platformRole(user)))return NextResponse.json({error:"Text requires review: "+reason},{status:422});
  const db=admin();
+ const {data:target}=await db.from("prezzstore_stores").select("deleted_at,is_profile_store").eq("id",storeId).maybeSingle();
+ if(!target||target.deleted_at||target.is_profile_store)return NextResponse.json({error:"Studio unavailable"},{status:403});
  if(banner_url){
   const {data:store}=await db.from("prezzstore_stores").select("banner_url").eq("id",storeId).maybeSingle();
   if(banner_url!==store?.banner_url && !banner_url.startsWith((process.env.NEXT_PUBLIC_SUPABASE_URL||"")+"/storage/v1/object/public/prezzstore_assets/"+user.id+"/"))

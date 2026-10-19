@@ -19,6 +19,8 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  if(role==="reviewer")return NextResponse.json({error:"Reviewers approve listings but cannot edit them"},{status:403});
  if(role==="creator" && product.submitted_by!==user.id)return NextResponse.json({error:"Creators may only edit their own submissions"},{status:403});
  if(product.removed_at)return NextResponse.json({error:"Removed listings must be reviewed by moderation"},{status:403});
+ const {data:parent}=await db.from("prezzstore_stores").select("deleted_at,suspended_at").eq("id",product.store_id).maybeSingle();
+ if(!parent||parent.deleted_at||parent.suspended_at)return NextResponse.json({error:"Studio is unavailable"},{status:403});
  const updates:Record<string,unknown>={};
  if("title" in body){if(typeof body.title!=="string"||body.title.trim().length<3||body.title.trim().length>120)return NextResponse.json({error:"Invalid title"},{status:400});updates.title=body.title.trim();}
  if("description" in body){if(typeof body.description!=="string"||body.description.length>10000)return NextResponse.json({error:"Description is too long"},{status:400});updates.description=body.description.trim();}

@@ -39,10 +39,11 @@ export async function POST(request:NextRequest){
   if(product.stock_quantity!==null && product.stock_quantity<1)return reject("Out of stock",409);
   if(!["digital","membership","service"].includes(product.kind))return reject("Invalid product type",400);
   if(product.kind==="membership"&&product.price_cents===0)return reject("Monthly memberships require a price",400);
-  const {data:store,error:se}=await db.from("prezzstore_stores").select("owner_id,stripe_account_id,suspended_at")
+  const {data:store,error:se}=await db.from("prezzstore_stores").select("owner_id,stripe_account_id,suspended_at,deleted_at,is_profile_store")
     .eq("id",product.store_id).maybeSingle();
   if(se)throw se;
-  if(!store||store.suspended_at)return reject("This store is unavailable",409);
+  if(!store||store.suspended_at||store.deleted_at)return reject("This seller is unavailable",409);
+  if(store.is_profile_store&&product.kind==="membership")return reject("Subscriptions are only available in studios",400);
   if(store.owner_id===user.id)return reject("You cannot purchase your own product",400);
   let finalPrice:number=product.price_cents,discountId:string|null=null;
   if(couponCode){
@@ -100,8 +101,8 @@ export async function POST(request:NextRequest){
 
   const recurring=product.kind==="membership";
   const baseBps=await marketplaceFeeBps();
-  const tier=await creatorPlusStatus(product.store_id);
-  const bps=creatorPlusFeeBps(baseBps,tier.qualified);
+  const qualified=store.is_profile_store?false:(await creatorPlusStatus(product.store_id)).qualified;
+  const bps=creatorPlusFeeBps(baseBps,qualified);
   const checkout=await stripe().checkout.sessions.create({
    mode:recurring?"subscription":"payment",
    customer_email:user.email,client_reference_id:order.id,

@@ -33,8 +33,9 @@ export async function POST(request:NextRequest){
  const override=body.moderationOverride===true&&Boolean(await platformRole(user));
  if(reason&&!override)return NextResponse.json({error:"Listing needs review: "+reason},{status:422});
  const db=admin();
- const {data:store}=await db.from("prezzstore_stores").select("id,suspended_at").eq("id",storeId).maybeSingle();
- if(!store||store.suspended_at)return NextResponse.json({error:"Store is not available"},{status:403});
+ const {data:store}=await db.from("prezzstore_stores").select("id,suspended_at,deleted_at,is_profile_store").eq("id",storeId).maybeSingle();
+ if(!store||store.suspended_at||store.deleted_at)return NextResponse.json({error:"Store is not available"},{status:403});
+ if(store.is_profile_store&&kind==="membership")return NextResponse.json({error:"Subscriptions require a studio"},{status:400});
  const {data:product,error}=await db.from("prezzstore_products").insert({
   store_id:store.id,title,slug:slugify(title)+"-"+crypto.randomUUID().slice(0,8),
   description,category:kind==="membership"?"Memberships":category,
