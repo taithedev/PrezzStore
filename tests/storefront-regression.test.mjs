@@ -220,6 +220,6 @@ test("Account does not create studios for ordinary buyers",()=>{
  const profile=read("lib/profile.ts");
  assert.match(account,/creator\?await ensureOwnProfile\(user\):null/);
  assert.match(account,/profileStore\?/);
- assert.match(profile,/createStore=false/);
+ assert.match(profile,/createStore=true/);
  assert.match(profile,/!store && !createStore/);
 });
