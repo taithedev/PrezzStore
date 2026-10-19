@@ -1,0 +1,62 @@
+import Link from "next/link";
+import {redirect} from "next/navigation";
+import {UserRound,ShieldCheck,ShoppingBag,Palette,Gift,Store,ArrowUpRight,Mail} from "lucide-react";
+import {admin,currentUser} from "@/lib/supabase";
+import {platformRole} from "@/lib/authority";
+export const dynamic="force-dynamic";
+export const metadata={title:"My account"};
+export default async function Account(){
+ const user=await currentUser();
+ if(!user)redirect("/login?next=/account");
+ const db=admin(),role=await platformRole(user);
+ const [{data:owned},{data:staff},{data:points}]=await Promise.all([
+  db.from("prezzstore_stores").select("id,name,slug").eq("owner_id",user.id).order("created_at",{ascending:true}),
+  db.from("prezzstore_store_managers").select("store_id,role").eq("user_id",user.id),
+  db.from("prezzstore_point_events").select("points").eq("user_id",user.id).limit(2000)
+ ]);
+ const selected=[...(owned||[])];
+ if(staff?.length){
+  const {data:collabStores}=await db.from("prezzstore_stores").select("id,name,slug").in("id",staff.map(s=>s.store_id));
+  selected.push(...(collabStores||[]));
+ }
+ if(role==="owner"){
+  const {data:zuzu}=await db.from("prezzstore_stores").select("id,name,slug").eq("slug","zuzify").maybeSingle();
+  if(zuzu)selected.push(zuzu);
+ }
+ const stores=Array.from(new Map(selected.map(s=>[s.id,s])).values());
+ const pointsTotal=(points||[]).reduce((sum,row)=>sum+row.points,0);
+ return <div className="shell page-top account-screen">
+  <div className="account-heading"><div className="account-avatar"><UserRound size={28}/></div>
+  <div><span className="section-tag">PREZZSTORE / ACCOUNT</span><h1>My account</h1><p>Manage your stores and account tools.</p></div></div>
+  <div className="account-grid">
+   <section className="studio-panel"><h2><Mail size={19}/> Account details</h2>
+    <div className="account-detail"><span>Email</span><strong>{user.email}</strong></div>
+    <div className="account-detail"><span>Email confirmation</span><strong>{user.email_confirmed_at?"Verified":"Pending"}</strong></div>
+    <div className="account-detail"><span>Account role</span><strong>{role==="owner"?"Marketplace owner":role==="admin"?"Marketplace admin":"Member"}</strong></div>
+    <div className="account-detail"><span>Member since</span><strong>{new Date(user.created_at).toLocaleDateString("en-US")}</strong></div>
+    <p className="tiny-note">Contact support if you need help with account access. You can reset your password using the login page.</p>
+    <Link className="button button-outline" href="/login">Account sign-in and recovery <ArrowUpRight size={15}/></Link>
+   </section>
+   <section className="studio-panel"><h2><Store size={19}/> Your studios</h2>
+    {stores.length?stores.map(s=><div key={s.id} className="account-detail">
+     <Link href={"/shop/"+s.slug}>{s.name}</Link><Link href={"/dashboard?store="+s.id} className="text-link">Manage <ArrowUpRight size={14}/></Link>
+    </div>):<p>You don't manage a store yet.</p>}
+    <Link className="button button-primary" href="/dashboard">Go to Creator Studio <ArrowUpRight size={15}/></Link>
+   </section>
+   <section className="studio-panel"><h2><Gift size={19}/> Rewards</h2>
+    <strong className="account-points">{pointsTotal.toLocaleString()} points</strong>
+    <p className="muted-text">Rewards points are recorded for eligible completed orders, adjusted for refunds.</p>
+    <Link className="text-link" href="/rewards">Points history <ArrowUpRight size={14}/></Link>
+   </section>
+   <section className="studio-panel"><h2><ShieldCheck size={19}/> Preferences</h2>
+    <p className="muted-text">Change your appearance settings, access purchases, and track account updates.</p>
+    <div className="account-actions">
+     <Link href="/appearance"><Palette size={17}/> Appearance</Link>
+     <Link href="/orders"><ShoppingBag size={17}/> Purchases and receipts</Link>
+     <Link href="/creator-plus"><Store size={17}/> PrezzCreator+ requirements</Link>
+     {role&&<Link href="/control"><ShieldCheck size={17}/> Marketplace controls</Link>}
+    </div>
+   </section>
+  </div>
+ </div>;
+}

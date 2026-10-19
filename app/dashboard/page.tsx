@@ -2,7 +2,8 @@ import { SUPABASE_URL } from "@/lib/public-supabase";
 import { redirect } from "next/navigation";
 import Studio from "@/components/studio";
 import { admin,currentUser } from "@/lib/supabase";
-import { platformRole } from "@/lib/authority";
+import {platformRole,studioRole,type StudioRole} from "@/lib/authority";
+import {creatorPlusStatus,type CreatorPlusStatus} from "@/lib/creator-plus";
 import type {Product,Store} from "@/lib/types";
 import type {SellerSale} from "@/components/seller-sales";
 export const dynamic="force-dynamic";
@@ -11,6 +12,7 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<{st
  if(!user && SUPABASE_URL)redirect("/login?next=/dashboard");
  let store:Store|null=null, products:Product[]=[], sales:SellerSale[]=[];
  let stores:Store[]=[],role:"owner"|"admin"|null=null;
+ let studioAccess:StudioRole|null=null, plus:CreatorPlusStatus|null=null, baseBps=1000;
  if(user){
   const db=admin();
   role=await platformRole(user);
@@ -31,6 +33,10 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<{st
   const requested=(await searchParams).store;
   store=stores.find(s=>s.id===requested)||stores.find(s=>s.slug==="zuzify"&&role==="owner")||stores[0]||null;
   if(store){
+   studioAccess=await studioRole(user,store.id);
+   plus=await creatorPlusStatus(store.id);
+   const {data:feeSetting}=await db.from("prezzstore_platform_settings").select("number_value").eq("name","commission_bps").maybeSingle();
+   baseBps=feeSetting?.number_value??1000;
    const {data:p}=await db.from("prezzstore_products").select("*").eq("store_id",store.id)
     .order("created_at",{ascending:false}).limit(200);
    products=(p||[]) as Product[];
@@ -42,5 +48,5 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<{st
   }
  }
  return <Studio userId={user?.id||null} userEmail={user?.email||""} initialStore={store}
-  initialStores={stores} platformRole={role} initialProducts={products} initialSales={sales}/>;
+  initialStores={stores} platformRole={role} studioAccess={studioAccess} plusStatus={plus} baseBps={baseBps} initialProducts={products} initialSales={sales}/>;
 }
