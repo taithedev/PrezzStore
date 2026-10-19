@@ -16,6 +16,15 @@ export function stripeConfigured() {
   return Boolean(key && (key.includes("_test_") || (key.includes("_live_") && process.env.PREZZSTORE_LIVE_PAYMENTS_ENABLED === "true")));
 }
 
+/** Verify incoming events even while new live Checkout sessions are disabled. */
+export function verifyStripeWebhook(payload: string, signature: string, secret: string): Stripe.Event {
+  const key = process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY;
+  if (!key) throw new Error("Stripe server key has not been configured");
+  // Signature verification is local; this client never makes an API request.
+  return new Stripe(key, { apiVersion: "2026-08-26.dahlia" })
+    .webhooks.constructEvent(payload, signature, secret);
+}
+
 export function siteUrl(): string {
   const supplied = process.env.NEXT_PUBLIC_SITE_URL
     || process.env.VERCEL_PROJECT_PRODUCTION_URL
