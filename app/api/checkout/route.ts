@@ -25,7 +25,9 @@ export async function POST(request:NextRequest){
  try{
    const body=contentType.includes("application/json")?await request.json():await request.formData();
    productId=body instanceof FormData?String(body.get("productId")??""):String(body.productId??"");
-   ownerFree=(body instanceof FormData?body.get("ownerFree"):body.ownerFree)=== "on" || (body instanceof FormData?body.get("ownerFree"):body.ownerFree)===true;
+   const rawOwnerFree = body instanceof FormData ? body.get("ownerFree") : body.ownerFree;
+   ownerFree = rawOwnerFree === true || rawOwnerFree === 1 ||
+     (typeof rawOwnerFree === "string" && ["on", "true", "1"].includes(rawOwnerFree.toLowerCase()));
    couponCode=(body instanceof FormData?String(body.get("discountCode")??""):String(body.discountCode??"")).trim().toUpperCase();
  }catch{return reject("Invalid checkout request",400);}
  if(!/^[a-f0-9-]{36}$/i.test(productId)||couponCode.length>32)return reject("Invalid product or coupon",400);
