@@ -43,7 +43,17 @@ export async function POST(request:NextRequest){
   price_cents:price,kind,image_url:imagePath?(db.storage.from("prezzstore_assets").getPublicUrl(imagePath).data.publicUrl):null,
   file_path:filePath,asset_owner_id:user.id,submitted_by:user.id,review_status:creatorOnly?"pending":"approved",stock_quantity:kind==="membership"?null:stock,published:creatorOnly?false:published
  }).select("*").single();
- if(error)return NextResponse.json({error:"Could not save listing"},{status:502});
+ if(error){
+  console.error("PrezzStore listing creation failed", {code:error.code, message:error.message, details:error.details, storeId:store.id});
+  const denied=error.code==="42501";
+  const invalid=error.code==="23514"||error.code==="23503"||error.code==="23505";
+  return NextResponse.json({
+   error: denied?"Store database permissions are not configured correctly. Contact support.":
+    invalid?"The listing conflicts with a store or product rule. Check the listing fields.":
+    "Could not save listing. Please retry or contact support.",
+   code:error.code||"listing_save_failed"
+  },{status:denied?503:invalid?409:502});
+ }
  if(reason&&override)await db.from("prezzstore_moderation_log").insert({moderator_id:user.id,target_type:"content",target_id:product.id,action:"approved_false_positive",note:reason});
  return NextResponse.json({product},{status:201});
 }
