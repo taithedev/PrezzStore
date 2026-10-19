@@ -106,3 +106,36 @@ html[data-prezz-density="compact"] .product-card{border-radius:12px;}
 @media(max-width:860px){.appearance-grid{grid-template-columns:1fr;}.theme-options{grid-template-columns:repeat(3,1fr);}.seller-metrics{grid-template-columns:1fr 1fr;}}
 @media(max-width:540px){.theme-options,.seller-metrics{grid-template-columns:1fr;}.appearance-grid .studio-panel{padding:18px;}.nav-links a[href="/appearance"]{display:none;}.listing-editor-form{left:0;right:0;}}
 @media(prefers-reduced-motion:reduce){.prezz-ambient i{animation:none!important;display:none!important}.button,.product-card,.visual-window{transition:none!important;}}
+
+/* Marketplace tools, controls and receipts: reuse existing design tokens. */
+.store-tools{padding:44px 0 92px}.store-tools h2{font-size:clamp(26px,3vw,42px);letter-spacing:-1px;margin:18px 0 26px}
+.tool-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}
+.tool-list>div,.console-field{border:1px solid var(--line);background:#ffffff07;border-radius:17px;padding:22px}
+.tool-list strong{font-size:15px}.tool-list p{font-size:13px;line-height:1.65;color:var(--muted);margin:10px 0 0}
+.announcement-banner{position:relative;display:flex;gap:13px;align-items:center;padding:14px max(26px,calc((100vw - 1230px)/2));background:#221936;border-bottom:1px solid #7654ab55;color:#eee6ff;z-index:30}
+.announcement-banner>div{flex:1;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.announcement-banner strong{font-size:13px}.announcement-banner span{font-size:13px;line-height:1.5}
+.announcement-banner a{font-size:12px;text-decoration:underline;white-space:nowrap}
+.announcement-banner button{background:transparent;border:0;color:inherit;padding:5px}
+.console-layout{max-width:1100px}.console-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0}
+.console-field h3{display:flex;align-items:center;gap:9px}.console-field p{line-height:1.5;font-size:13px;color:var(--muted)}
+.console-field form{display:flex;flex-direction:column;gap:12px}
+.console-field label{display:flex;flex-direction:column;gap:7px;color:var(--muted);font-size:12px}
+.console-field input,.console-field select,.console-field textarea,.store-switcher select,.checkout-discount input{padding:12px 14px;min-height:44px;border:1px solid #ffffff24;border-radius:11px;background:var(--panel);color:var(--text);width:100%}
+.console-field .checkbox-row{flex-direction:row;align-items:center}
+.console-field .checkbox-row input{width:auto;min-height:0}
+.console-field button{align-self:flex-start}.console-status{min-height:24px;font-size:13px}
+.store-switcher{margin:18px 0}.store-switcher label{display:flex;gap:12px;align-items:center;font-weight:700}.store-switcher select{width:320px;max-width:100%}
+.operator-shortcut{margin:12px 0}
+.news-entry{padding:22px 2px;border-bottom:1px solid var(--line)}.news-entry:last-child{border-bottom:0}
+.news-entry h2{margin:14px 0}.news-entry p{white-space:pre-wrap;line-height:1.8;color:var(--muted)}
+.news-entry small{display:flex;align-items:center;gap:7px;color:var(--muted)}
+.reward-count{display:flex;align-items:center;gap:16px}.reward-count strong{font-size:42px;display:block}.reward-count small{color:var(--muted)}
+.reward-history{display:flex;justify-content:space-between;gap:15px;padding:16px 0;border-bottom:1px solid var(--line)}
+.checkout-discount{display:block;margin:18px 0;font-size:13px;font-weight:700}.checkout-discount input{display:block;margin-top:8px}
+.receipt-sheet{margin-top:35px;padding:clamp(24px,5vw,55px);border:1px solid var(--line);border-radius:20px;background:var(--panel)}
+.receipt-section{display:flex;justify-content:space-between;gap:20px;padding:14px 0;border-bottom:1px solid var(--line)}
+.receipt-section small{color:var(--muted)}.receipt-print{margin-top:24px}
+@media(max-width:800px){.tool-list{grid-template-columns:repeat(2,minmax(0,1fr))}.console-grid{grid-template-columns:1fr}.announcement-banner{padding-inline:16px}.announcement-banner>div{display:block}}
+@media(max-width:480px){.tool-list{grid-template-columns:1fr}.receipt-section{flex-wrap:wrap}}
+@media print{.site-header,.footer,.announcement-banner,.receipt-print{display:none!important}.receipt-sheet{border:0!important;background:#fff!important;color:#000!important}body{background:#fff!important;color:#000!important}}

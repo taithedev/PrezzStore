@@ -4,8 +4,21 @@ import Link from "next/link";
 import { Bell, X } from "lucide-react";
 export default function AnnouncementBanner({items}:{items:{id:string;title:string;body:string;category:string}[]}){
  const [dismissed,setDismissed]=useState<string[]>([]);
+ const [announcements,setAnnouncements]=useState(items);
+ useEffect(()=>{
+  let mounted=true;
+  async function refresh(){
+   try{
+    const response=await fetch("/api/announcements",{cache:"no-store"});
+    if(response.ok){const data=await response.json();if(mounted&&Array.isArray(data.items))setAnnouncements(data.items);}
+   }catch{}
+  }
+  refresh();
+  const timer=setInterval(refresh,45000);
+  return ()=>{mounted=false;clearInterval(timer);};
+ },[]);
  useEffect(()=>{try{setDismissed(JSON.parse(localStorage.getItem("prezzstore_dismissed_announcements")||"[]"));}catch{}},[]);
- const visible=items.find(item=>!dismissed.includes(item.id));
+ const visible=announcements.find(item=>!dismissed.includes(item.id));
  if(!visible)return null;
  function dismiss(){
   if(!visible)return;
