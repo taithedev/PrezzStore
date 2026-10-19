@@ -16,7 +16,12 @@ export default async function Account(){
  const db=admin(),role=await platformRole(user);
  const [creator,badge]=await Promise.all([creatorEnrolled(user),publicUserBadge(user.id)]);
  // Regular buyer accounts must not create seller storefronts merely by opening /account.
- const own=creator?await ensureOwnProfile(user):null;
+ let own:Awaited<ReturnType<typeof ensureOwnProfile>>|null=null;
+ let profileError=false;
+ if(creator){
+  try{own=await ensureOwnProfile(user);}
+  catch(error){profileError=true;console.error("PrezzStore creator profile initialization:",error instanceof Error?error.message:error);}
+ }
  const profile=own?.profile||null,profileStore=own?.store||null;
  const profileItems=profileStore?(await db.from("prezzstore_products").select("*")
   .eq("store_id",profileStore.id).is("removed_at",null).order("created_at",{ascending:false}).limit(100)).data||[]:[];
@@ -72,6 +77,7 @@ export default async function Account(){
    </section>
   </div>
   <CreatorJoin enrolled={creator}/>
+  {creator&&profileError&&<section className="studio-panel"><h2>Profile listings unavailable</h2><p>Your account and purchases are still accessible. Profile setup could not finish; please try again later.</p></section>}
   {creator&&profile&&profileStore&&<div className="profile-section"><div className="inner-hero compact"><span className="section-tag">YOUR PROFILE</span>
   <h2>Profile listings</h2><p>Publish downloads and one-time services without opening a studio.</p></div>
   <ProfileListings userId={user.id} storeId={profileStore.id}
