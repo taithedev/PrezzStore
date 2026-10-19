@@ -39,3 +39,22 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  if(reason&&override)await db.from("prezzstore_moderation_log").insert({moderator_id:user.id,target_type:"content",target_id:id,action:"approved_false_positive",note:reason});
  return NextResponse.json({product:data});
 }
+
+export async function DELETE(_:NextRequest,{params}:{params:Promise<{id:string}>}){
+ const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in"},{status:401});
+ const {id}=await params;if(!/^[a-f0-9-]{36}$/i.test(id))return NextResponse.json({error:"Invalid listing"},{status:400});
+ const db=admin();
+ const {data:product}=await db.from("prezzstore_products").select("store_id,submitted_by,removed_at").eq("id",id).maybeSingle();
+ if(!product)return NextResponse.json({error:"Listing not found"},{status:404});
+ const role=await studioRole(user,product.store_id);
+ if(!role||role==="reviewer"||(role==="creator"&&product.submitted_by!==user.id))
+  return NextResponse.json({error:"You cannot remove this listing"},{status:403});
+ const {error}=await db.from("prezzstore_products")
+  .update({removed_at:new Date().toISOString(),published:false})
+  .eq("id",id).eq("store_id",product.store_id);
+ if(error)return NextResponse.json({error:"Unable to remove listing"},{status:503});
+ await db.from("prezzstore_moderation_log").insert({
+  moderator_id:user.id,target_type:"product",target_id:id,action:"owner_archive_product",note:"Removed from marketplace; historical orders preserved"
+ });
+ return NextResponse.json({ok:true});
+}

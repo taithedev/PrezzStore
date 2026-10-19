@@ -92,7 +92,7 @@ export default function ProfileListings({userId,storeId,initialProfile,initialIt
     <div className="dashboard-thumb">{p.image_url?<img src={p.image_url} alt=""/>:"✳"}</div>
     <div><strong>{p.title}</strong><small>{p.published?"Published":"Draft"} · {p.kind}</small></div>
     <span>{p.price_cents===0?"Free":"$"+(p.price_cents/100).toFixed(2)}</span>
-    <ListingEditor product={p} onSaved={updated=>setItems(old=>old.map(x=>x.id===updated.id?updated:x))}/>
+    <ListingEditor product={p} onSaved={updated=>setItems(old=>old.map(x=>x.id===updated.id?updated:x))} onDeleted={id=>setItems(old=>old.filter(x=>x.id!==id))}/>
     {p.published&&<Link href={"/products/"+p.id}><ExternalLink size={16}/></Link>}
    </div>)}</div>:<p className="muted-text">No listings yet.</p>}
   </section>

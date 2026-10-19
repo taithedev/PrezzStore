@@ -37,7 +37,7 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<{st
    plus=await creatorPlusStatus(store.id);
    const {data:feeSetting}=await db.from("prezzstore_platform_settings").select("number_value").eq("name","commission_bps").maybeSingle();
    baseBps=feeSetting?.number_value??1000;
-   let listingQuery=db.from("prezzstore_products").select("*").eq("store_id",store.id)
+   let listingQuery=db.from("prezzstore_products").select("*").eq("store_id",store.id).is("removed_at",null)
     .order("created_at",{ascending:false}).limit(200);
    // Creators must not receive another creator's private drafts in the client payload.
    if(studioAccess==="creator")listingQuery=listingQuery.eq("submitted_by",user.id);

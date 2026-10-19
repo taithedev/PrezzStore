@@ -1,8 +1,8 @@
 "use client";
 import {useState} from "react";
-import {Check,Pencil,LoaderCircle} from "lucide-react";
+import {Check,Pencil,LoaderCircle,Trash2} from "lucide-react";
 import type {Product} from "@/lib/types";
-export default function ListingEditor({product,onSaved,canPublish=true}:{product:Product;canPublish?:boolean;onSaved:(product:Product)=>void}){
+export default function ListingEditor({product,onSaved,onDeleted,canPublish=true}:{product:Product;canPublish?:boolean;onSaved:(product:Product)=>void;onDeleted?:(id:string)=>void}){
  const [open,setOpen]=useState(false);
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
@@ -25,6 +25,15 @@ export default function ListingEditor({product,onSaved,canPublish=true}:{product
  onSaved(body.product as Product);setOpen(false);
  }catch(e){setError(e instanceof Error?e.message:"Could not save");}finally{setBusy(false);}
  }
+ async function remove(){
+  if(busy||!window.confirm("Remove this listing from public view? This preserves past purchases."))return;
+  setBusy(true);setError("");
+  try{
+   const r=await fetch("/api/studio/products/"+product.id,{method:"DELETE"});
+   if(!r.ok)throw new Error((await r.json()).error||"Could not remove listing");
+   onDeleted?.(product.id);
+  }catch(e){setError(e instanceof Error?e.message:"Removal failed");}finally{setBusy(false);}
+ }
  return <div className="listing-editor">
   <button type="button" className="button button-outline listing-edit-button" onClick={()=>setOpen(x=>!x)}>
    <Pencil size={15}/>{open?"Close":"Edit"}</button>
@@ -36,6 +45,7 @@ export default function ListingEditor({product,onSaved,canPublish=true}:{product
    {canPublish?<label className="checkbox-row"><input type="checkbox" checked={published} onChange={e=>setPublished(e.target.checked)}/> Public listing</label>:<p className="tiny-note">Your edits go back into review before they become public.</p>}
    {error&&<p role="alert" className="form-error">{error}</p>}
    <button className="button button-primary" type="submit" disabled={busy}>{busy?<LoaderCircle className="spin" size={15}/>:<Check size={15}/>} Save listing</button>
+   {onDeleted&&<button className="button button-danger" type="button" onClick={remove} disabled={busy}><Trash2 size={15}/> Remove listing</button>}
   </form>}
  </div>;
 }

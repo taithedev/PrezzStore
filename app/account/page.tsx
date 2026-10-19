@@ -16,7 +16,7 @@ export default async function Account(){
  const {profile,store:profileStore}=await ensureOwnProfile(user);
  const badge=await publicUserBadge(user.id);
  const {data:profileItems}=await db.from("prezzstore_products").select("*")
-  .eq("store_id",profileStore.id).order("created_at",{ascending:false}).limit(100);
+  .eq("store_id",profileStore.id).is("removed_at",null).order("created_at",{ascending:false}).limit(100);
  const [{data:owned},{data:staff},{data:points}]=await Promise.all([
   db.from("prezzstore_stores").select("id,name,slug,deleted_at").eq("owner_id",user.id).eq("is_profile_store",false).order("created_at",{ascending:true}),
   db.from("prezzstore_store_managers").select("store_id,role").eq("user_id",user.id),

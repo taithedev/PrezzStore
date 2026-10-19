@@ -16,6 +16,8 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
  if(pe||!product)return NextResponse.json({error:"Listing not found"},{status:404});
  if(!await canApproveProduct(user,product.store_id))return NextResponse.json({error:"No review permission"},{status:403});
  if(product.removed_at)return NextResponse.json({error:"Listing removed by moderation"},{status:403});
+ const {data:parent}=await db.from("prezzstore_stores").select("deleted_at,suspended_at,is_profile_store").eq("id",product.store_id).maybeSingle();
+ if(!parent||parent.deleted_at||parent.suspended_at||parent.is_profile_store)return NextResponse.json({error:"Studio unavailable for review"},{status:403});
  const approving=body.decision==="approve";
  if(approving&&product.kind==="digital"&&!product.file_path)return NextResponse.json({error:"Digital downloads require a delivery file"},{status:409});
  const flagged=moderationReason(product.title,product.description);
