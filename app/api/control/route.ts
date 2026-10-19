@@ -58,7 +58,7 @@ export async function POST(request:NextRequest){
   if(action==="manager"){
    const storeId=body.store_id,email=String(body.email||"").trim().toLowerCase();
    if(!uuid(storeId)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail("Enter a valid store ID and account email");
-   if(!await canManageTeam(user,storeId))return fail("Only a shop's owner can manage its staff",403);
+   if(!await canManageTeam(user,String(storeId)))return fail("Only a shop's owner can manage its staff",403);
    const {data:uid,error:lookupError}=await db.rpc("prezzstore_verified_user_id",{p_email:email});
    if(lookupError)throw lookupError;
    if(!uid)return fail("No verified PrezzStore account with that email",404);
