@@ -22,6 +22,29 @@ export async function POST(request: NextRequest) {
     if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.payment_status !== "paid") return NextResponse.json({ received: true });
+      if (session.metadata?.prezzstore_payment_type === "donation") {
+        const donationId = session.metadata.prezzstore_donation_id;
+        if (!donationId || session.mode !== "payment" || session.currency?.toLowerCase() !== "usd"
+          || typeof session.amount_total !== "number") {
+          throw new Error("Malformed donation checkout event");
+        }
+        const { data: updated, error } = await db.from("prezzstore_donations")
+          .update({ status: "paid", paid_at: new Date().toISOString() })
+          .eq("id", donationId).eq("stripe_session_id", session.id)
+          .eq("amount_cents", session.amount_total).eq("status", "pending").select("id");
+        if (error) throw error;
+        if (!updated?.length) {
+          const { data: prior, error: priorError } = await db.from("prezzstore_donations")
+            .select("id,status,amount_cents").eq("id", donationId)
+            .eq("stripe_session_id", session.id).maybeSingle();
+          if (priorError) throw priorError;
+          if (!prior || prior.amount_cents !== session.amount_total
+            || !["paid", "refunded"].includes(prior.status)) {
+            throw new Error("Unmatched donation checkout");
+          }
+        }
+        return NextResponse.json({ received: true });
+      }
       const orderId = session.metadata?.prezzstore_order_id;
       const buyerId = session.metadata?.prezzstore_buyer_id;
       if (!orderId || !buyerId) return NextResponse.json({ received: true });
@@ -43,7 +66,13 @@ export async function POST(request: NextRequest) {
       }
     } else if (event.type === "checkout.session.async_payment_failed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      if (session.metadata?.prezzstore_order_id) {
+      if (session.metadata?.prezzstore_payment_type === "donation" && session.metadata.prezzstore_donation_id) {
+        const { error } = await db.from("prezzstore_donations")
+          .update({ status: "failed" })
+          .eq("id", session.metadata.prezzstore_donation_id)
+          .eq("stripe_session_id", session.id).eq("status", "pending");
+        if (error) throw error;
+      } else if (session.metadata?.prezzstore_order_id) {
         const { error } = await db.from("prezzstore_orders").update({ status: "failed" })
           .eq("id", session.metadata.prezzstore_order_id).eq("stripe_session_id", session.id).eq("status", "pending");
         if (error) throw error;
@@ -71,6 +100,14 @@ export async function POST(request: NextRequest) {
       if (paymentIntent && charge.refunded) {
         const sessions = await stripe().checkout.sessions.list({ payment_intent: paymentIntent, limit: 100 });
         for (const session of sessions.data) {
+          if (session.metadata?.prezzstore_payment_type === "donation" && session.metadata.prezzstore_donation_id) {
+            const { error } = await db.from("prezzstore_donations")
+              .update({ status: "refunded" })
+              .eq("id", session.metadata.prezzstore_donation_id)
+              .eq("stripe_session_id", session.id).eq("status", "paid");
+            if (error) throw error;
+            continue;
+          }
           const { error } = await db.from("prezzstore_orders")
             .update({ status: "refunded", membership_status: "inactive" })
             .eq("stripe_session_id", session.id).eq("status", "paid");

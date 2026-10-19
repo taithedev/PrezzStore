@@ -5,7 +5,7 @@ A Next.js creator marketplace for digital products, customizable shops and month
 ## Isolation from existing apps
 
 - Supabase project: zuzify, ref wfqudstuncdldsvxqveu
-- Tables: prezzstore_stores, prezzstore_products, prezzstore_orders
+- Tables: prezzstore_stores, prezzstore_products, prezzstore_orders, prezzstore_donations
 - Storage: prezzstore_assets (public image covers), prezzstore_deliveries (private downloadable files)
 - Tables use RLS to restrict seller changes and buyer purchase histories; webhook writes are server-only.
 - Authentication uses the shared Supabase Auth users, not a separate identity pool.
@@ -22,7 +22,7 @@ Deploy GitHub repo taithedev/PrezzStore to Vercel (Next.js preset, default root)
 - NEXT_PUBLIC_SITE_URL: HTTPS base URL of the live app
 - STRIPE_SECRET_KEY: restricted **Stripe sandbox** key during development
 - STRIPE_WEBHOOK_SECRET: signing secret for /api/stripe/webhook (required before checkout is enabled)
-- PREZZSTORE_PLATFORM_FEE_BPS: optional, 800 by default for 8% fee
+- PREZZSTORE_PLATFORM_FEE_BPS: optional, 1000 by default for 10% seller-sale commission; set to 1000 in Vercel if a previous 800 override exists
 - STRIPE_CONNECT_COUNTRY: us by default
 
 Use Vercel sensitive environment variables for server secrets. No private keys belong in GitHub source.
@@ -33,7 +33,7 @@ In Stripe sandbox, set the webhook destination to https://YOUR_DOMAIN/api/stripe
 
 ## Features
 
-Marketplace, search, category filters, sorting, digital listings, file uploads, storefront themes and banner images, subscriptions, Stripe Connect seller onboarding, protected downloads, checkout, order history, billing portal, password recovery and account signup.
+Marketplace, search, category filters, sorting, digital listings, file uploads, storefront themes and banner images, subscriptions, Stripe Connect seller onboarding, protected downloads, checkout, order history, billing portal, password recovery and account signup. Sellers upload listings to Supabase; their Stripe Checkout sessions are created dynamically and PrezzStore's default platform fee is 10% of the item price. Visitors can optionally support the platform at `/donate` using a separate Stripe payment; those contributions are NOT routed to marketplace sellers.
 
 ## Production readiness
 
@@ -101,3 +101,16 @@ and https://support.stripe.com/questions/fix-the-accounts-v1-is-no-longer-recomm
 The platform remains in sandbox/test mode, and production payments are not enabled.
 A seller must initiate and complete the hosted Stripe identity process themselves
 (or with the required legal guardian). Never create fake personal data to pass checks.
+
+
+## 10% marketplace commission and optional support contributions
+
+- Seller sales use existing destination-charge Checkout: 10% application fee (10.00% for recurring memberships), remainder routes to the seller's Connect account. Stripe payment/Connect costs, taxes, refunds and disputes are separate; do not assume the seller receives 90% net after those costs.
+- This 10% commission does **not** add 10% on top of the buyer's listed price. There is no manual Stripe catalog management for creators; Checkout uses dynamic `price_data`.
+- `PREZZSTORE_PLATFORM_FEE_BPS=1000` in the Vercel environment, especially if previously explicitly set to 800. Redeploy after changing environment variables.
+- Apply `supabase/migrations/004_prezzstore_donations.sql` to the **zuzify** project. Only service-role API handlers access donation records; no public donor data or unverified totals.
+- `/donate` offers voluntary $1–$500 contributions to **PrezzStore itself**. These are not tax-deductible charitable donations and are not a request to support individual creators.
+- `POST /api/donate` validates the price server-side, creates a DB record, creates a one-time Stripe Checkout Session to the platform account (no `transfer_data` or `application_fee_amount`), and redirects. Signed `/api/stripe/webhook` events confirm payment, mark failed attempts, and handle full charge refunds.
+- A donation success redirect is informational only: Stripe's signed webhook, not the browser redirect, marks a donation paid.
+- Donate checkout requires `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, and the existing restricted sandbox Stripe secret key. No live payments until adult-owned/eligible Stripe account setup and legal review.
+- Stripe processing fees generally reduce the amount received by PrezzStore. Users should not be told all of a contribution reaches the marketplace.

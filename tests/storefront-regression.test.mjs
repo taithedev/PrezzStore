@@ -89,3 +89,22 @@ test("Onboarding error diagnostics preserve a safe failure stage without secrets
  assert.match(route,/secret hidden/);
  assert.match(route,/requestId: failure\.requestId/);
 });
+
+test("marketplace commission defaults to 10% and supports Stripe Connect splits",()=>{
+ const s=read("lib/stripe.ts"),checkout=read("app/api/checkout/route.ts");
+ assert.match(s,/PREZZSTORE_PLATFORM_FEE_BPS \\?\\? "1000"/);
+ assert.match(checkout,/application_fee_amount/);
+ assert.match(checkout,/application_fee_percent/);
+ assert.match(checkout,/transfer_data: \\{ destination: store.stripe_account_id \\}/);
+});
+test("optional platform support payments are validated and webhook-confirmed",()=>{
+ const route=read("app/api/donate/route.ts"),webhook=read("app/api/stripe/webhook/route.ts");
+ const migration=read("supabase/migrations/004_prezzstore_donations.sql");
+ assert.match(route,/parseAmountCents/);
+ assert.match(route,/prezzstore_payment_type: "donation"/);
+ assert.doesNotMatch(route,/application_fee_amount|transfer_data/);
+ assert.match(webhook,/prezzstore_donations/);
+ assert.match(webhook,/session.payment_status !== "paid"/);
+ assert.match(migration,/enable row level security/);
+ assert.match(migration,/service_role/);
+});

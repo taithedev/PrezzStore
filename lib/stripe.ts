@@ -29,7 +29,7 @@ export function siteUrl(): string {
 }
 
 export function feeBps(): number {
-  const value = Number(process.env.PREZZSTORE_PLATFORM_FEE_BPS ?? "800");
+  const value = Number(process.env.PREZZSTORE_PLATFORM_FEE_BPS ?? "1000");
   if (!Number.isInteger(value) || value < 0 || value > 3000) {
     throw new Error("Invalid PrezzStore platform fee");
   }
