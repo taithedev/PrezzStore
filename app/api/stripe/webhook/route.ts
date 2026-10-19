@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { admin } from "@/lib/supabase";
-import { stripe } from "@/lib/stripe";
+import { stripe, verifyStripeWebhook } from "@/lib/stripe";
 import { sendOrderReceipt } from "@/lib/receipt-email";
 export const runtime = "nodejs";
 
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   if (!signature || !secret) return NextResponse.json({ error: "Webhook signature is not configured." }, { status: 400 });
   let event: Stripe.Event;
   try {
-    event = stripe().webhooks.constructEvent(await request.text(), signature, secret);
+    event = verifyStripeWebhook(await request.text(), signature, secret);
   } catch {
     return NextResponse.json({ error: "Invalid Stripe webhook signature." }, { status: 400 });
   }
