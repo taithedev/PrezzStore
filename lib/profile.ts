@@ -24,7 +24,7 @@ export async function publicUserBadges(userIds:string[]):Promise<Map<string,User
  for(const row of roles||[])badges.set(row.user_id,"owner");
  return badges;
 }
-export async function ensureOwnProfile(user:SessionUser){
+export async function ensureOwnProfile(user:SessionUser,{createStore=true}:{createStore?:boolean}={}){
  const db=admin();
  let {data:profile,error:profileError}=await db.from("prezzstore_user_profiles")
   .select("user_id,display_name,bio").eq("user_id",user.id).maybeSingle();
@@ -45,6 +45,7 @@ export async function ensureOwnProfile(user:SessionUser){
  let {data:store,error:storeError}=await db.from("prezzstore_stores")
   .select("*").eq("owner_id",user.id).eq("is_profile_store",true).maybeSingle();
  if(storeError)throw storeError;
+ if(!store && !createStore)return {profile,store:null,role:await platformRole(user)};
  if(!store){
   const slug="profile-"+user.id.replaceAll("-","");
   const {error}=await db.from("prezzstore_stores").insert({

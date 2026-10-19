@@ -214,3 +214,12 @@ test("Official Zuzify store is featured without fabricated products",()=>{
  assert.match(page,/href="\/shop\/zuzify"/);
  assert.match(page,/zuzify&&/);
 });
+
+test("Account does not create studios for ordinary buyers",()=>{
+ const account=read("app/account/page.tsx");
+ const profile=read("lib/profile.ts");
+ assert.match(account,/creator\?await ensureOwnProfile\(user\):null/);
+ assert.match(account,/profileStore\?/);
+ assert.match(profile,/createStore=false/);
+ assert.match(profile,/!store && !createStore/);
+});

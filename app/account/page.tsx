@@ -14,11 +14,12 @@ export default async function Account(){
  const user=await currentUser();
  if(!user)redirect("/login?next=/account");
  const db=admin(),role=await platformRole(user);
- const {profile,store:profileStore}=await ensureOwnProfile(user);
- const badge=await publicUserBadge(user.id);
- const creator=await creatorEnrolled(user);
- const {data:profileItems}=await db.from("prezzstore_products").select("*")
-  .eq("store_id",profileStore.id).is("removed_at",null).order("created_at",{ascending:false}).limit(100);
+ const [creator,badge]=await Promise.all([creatorEnrolled(user),publicUserBadge(user.id)]);
+ // Regular buyer accounts must not create seller storefronts merely by opening /account.
+ const own=creator?await ensureOwnProfile(user):null;
+ const profile=own?.profile||null,profileStore=own?.store||null;
+ const profileItems=profileStore?(await db.from("prezzstore_products").select("*")
+  .eq("store_id",profileStore.id).is("removed_at",null).order("created_at",{ascending:false}).limit(100)).data||[]:[];
  const [{data:owned},{data:staff},{data:points}]=await Promise.all([
   db.from("prezzstore_stores").select("id,name,slug,deleted_at").eq("owner_id",user.id).eq("is_profile_store",false).order("created_at",{ascending:true}),
   db.from("prezzstore_store_managers").select("store_id,role").eq("user_id",user.id),
@@ -71,7 +72,7 @@ export default async function Account(){
    </section>
   </div>
   <CreatorJoin enrolled={creator}/>
-  {creator&&<div className="profile-section"><div className="inner-hero compact"><span className="section-tag">YOUR PROFILE</span>
+  {creator&&profile&&profileStore&&<div className="profile-section"><div className="inner-hero compact"><span className="section-tag">YOUR PROFILE</span>
   <h2>Profile listings</h2><p>Publish downloads and one-time services without opening a studio.</p></div>
   <ProfileListings userId={user.id} storeId={profileStore.id}
    initialProfile={{display_name:profile.display_name,bio:profile.bio}}
