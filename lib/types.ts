@@ -1,13 +1,13 @@
-export type ProductKind = "digital" | "membership";
+export type ProductKind = "digital" | "membership" | "service";
 export type Store = {
   id: string; owner_id: string; name: string; slug: string;
   description: string | null; accent: string; banner_url: string | null;
-  avatar_url: string | null; stripe_account_id: string | null; created_at: string;
+  avatar_url: string | null; stripe_account_id: string | null; verified?: boolean; suspended_at?: string | null; created_at: string;
 };
 export type Product = {
   id: string; store_id: string; title: string; slug: string; description: string | null;
   category: string; image_url: string | null; price_cents: number; kind: ProductKind;
-  file_path: string | null; published: boolean; created_at: string;
+  file_path: string | null; published: boolean; stock_quantity?: number | null; removed_at?:string|null; asset_owner_id?:string|null; created_at: string;
   store?: Store; demo?: boolean;
 };
 export type Order = {

@@ -48,23 +48,26 @@ export async function POST(request: NextRequest) {
       const orderId = session.metadata?.prezzstore_order_id;
       const buyerId = session.metadata?.prezzstore_buyer_id;
       if (!orderId || !buyerId) return NextResponse.json({ received: true });
+      if(session.amount_total===null||session.currency?.toLowerCase()!=="usd")throw new Error("Invalid order amount/currency");
       const subscription = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
       const { data: updated, error } = await db.from("prezzstore_orders").update({
         status: "paid",
         membership_status: session.mode === "subscription" ? "active" : "inactive",
         stripe_subscription_id: subscription
       }).eq("id", orderId).eq("buyer_id", buyerId)
-        .eq("stripe_session_id", session.id).eq("status", "pending").select("id");
+        .eq("stripe_session_id", session.id).eq("amount_cents",session.amount_total).eq("status", "pending").select("id");
       if (error) throw error;
       // A retry may legitimately find an already-paid order. Unknown sessions retry for reconciliation.
       if (!updated?.length) {
-        const { data: existing } = await db.from("prezzstore_orders").select("id,status")
+        const { data: existing } = await db.from("prezzstore_orders").select("id,status,amount_cents")
           .eq("id", orderId).eq("buyer_id", buyerId).eq("stripe_session_id", session.id).maybeSingle();
-        if (!existing || (existing.status !== "paid" && existing.status !== "refunded")) {
+        if (!existing || existing.amount_cents!==session.amount_total || (existing.status !== "paid" && existing.status !== "refunded")) {
           throw new Error("No matching order for completed Stripe checkout");
         }
       }
-    } else if (event.type === "checkout.session.async_payment_failed") {
+      const {error:pointsError}=await db.rpc("prezzstore_sync_order_points",{p_order_id:orderId,p_refund:false});
+      if(pointsError)throw pointsError;
+    } else if (event.type === "checkout.session.async_payment_failed" || event.type === "checkout.session.expired") {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.prezzstore_payment_type === "donation" && session.metadata.prezzstore_donation_id) {
         const { error } = await db.from("prezzstore_donations")
@@ -73,9 +76,19 @@ export async function POST(request: NextRequest) {
           .eq("stripe_session_id", session.id).eq("status", "pending");
         if (error) throw error;
       } else if (session.metadata?.prezzstore_order_id) {
-        const { error } = await db.from("prezzstore_orders").update({ status: "failed" })
-          .eq("id", session.metadata.prezzstore_order_id).eq("stripe_session_id", session.id).eq("status", "pending");
-        if (error) throw error;
+        const orderId=session.metadata.prezzstore_order_id;
+        const {data:expired,error} = await db.from("prezzstore_orders").update({status:"failed"})
+          .eq("id",orderId).eq("stripe_session_id",session.id).eq("status","pending")
+          .select("id,discount_id");
+        if(error)throw error;
+        if(expired?.length){
+          const {error:releaseError}=await db.rpc("prezzstore_release_stock",{p_order_id:orderId});
+          if(releaseError)throw releaseError;
+          if(expired[0].discount_id){
+            const {error:discountError}=await db.rpc("prezzstore_release_discount",{p_id:expired[0].discount_id});
+            if(discountError)throw discountError;
+          }
+        }
       }
     } else if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
@@ -108,10 +121,16 @@ export async function POST(request: NextRequest) {
             if (error) throw error;
             continue;
           }
-          const { error } = await db.from("prezzstore_orders")
-            .update({ status: "refunded", membership_status: "inactive" })
-            .eq("stripe_session_id", session.id).eq("status", "paid");
-          if (error) throw error;
+          const {data:refunded,error}=await db.from("prezzstore_orders")
+            .update({status:"refunded",membership_status:"inactive"})
+            .eq("stripe_session_id",session.id).eq("status","paid").select("id");
+          if(error)throw error;
+          for(const order of refunded||[]){
+            const {error:pts}=await db.rpc("prezzstore_sync_order_points",{p_order_id:order.id,p_refund:true});
+            if(pts)throw pts;
+            const {error:stock}=await db.rpc("prezzstore_release_stock",{p_order_id:order.id});
+            if(stock)throw stock;
+          }
         }
       }
     }
