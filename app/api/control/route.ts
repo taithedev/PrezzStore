@@ -80,6 +80,23 @@ export async function POST(request:NextRequest){
    }
    return NextResponse.json({ok:true,message:body.remove===true?"Manager access revoked.":"Manager access granted to the verified account."});
   }
+  if(action==="creator_plus_grant"){
+   if(role!=="owner")return fail("Only owners can grant PrezzCreator+",403);
+   const email=String(body.email||"").trim().toLowerCase();
+   if(email.length>254||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return fail("Enter a valid account email");
+   const {data:uid,error:lookupError}=await db.rpc("prezzstore_verified_user_id",{p_email:email});
+   if(lookupError)throw lookupError;
+   if(!uid)return fail("No verified account found for that email",404);
+   if(body.remove===true){
+     const {error}=await db.from("prezzstore_creator_plus_grants").delete().eq("user_id",uid);
+     if(error)throw error;
+   }else{
+     const {error}=await db.from("prezzstore_creator_plus_grants").upsert({user_id:uid,granted_by:user.id,granted_at:new Date().toISOString()},{onConflict:"user_id"});
+     if(error)throw error;
+   }
+   await db.from("prezzstore_moderation_log").insert({moderator_id:user.id,target_type:"content",action:body.remove===true?"revoke_creator_plus":"grant_creator_plus",note:"PrezzCreator+ owner-granted access"});
+   return NextResponse.json({ok:true,message:body.remove===true?"Owner grant removed. Earned eligibility still applies.":"PrezzCreator+ granted. The creator's studios receive program perks."});
+  }
   if(action==="verify_user"){
    if(role!=="owner")return fail("Only marketplace owners can verify user profiles",403);
    const email=String(body.email||"").trim().toLowerCase(),verify=body.verify===true;
