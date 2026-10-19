@@ -90,7 +90,7 @@ function describeOnboardingFailure(error: unknown, step: OnboardingStep): { mess
 export async function POST(request:NextRequest) {
   const user = await currentUser();
   if (!user?.email) return NextResponse.json({ error: "Sign in to manage your store." }, { status: 401 });
-  if (!stripeConfigured()) return NextResponse.json({ error: "Stripe sandbox is not configured yet." }, { status: 503 });
+  if (!stripeConfigured()) return NextResponse.json({ error: "Seller payments are not available yet." }, { status: 503 });
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ error: "Server database access is not configured." }, { status: 503 });
   let step: OnboardingStep = "read_store";
   try {
