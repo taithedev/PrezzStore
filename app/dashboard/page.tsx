@@ -2,7 +2,7 @@ import { SUPABASE_URL } from "@/lib/public-supabase";
 import { redirect } from "next/navigation";
 import Studio from "@/components/studio";
 import { admin,currentUser } from "@/lib/supabase";
-import {platformRole,studioRole,type StudioRole} from "@/lib/authority";
+import {platformRole,studioRole,creatorEnrolled,type StudioRole} from "@/lib/authority";
 import {creatorPlusStatus,type CreatorPlusStatus} from "@/lib/creator-plus";
 import type {Product,Store} from "@/lib/types";
 import type {SellerSale} from "@/components/seller-sales";
@@ -14,6 +14,7 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<{st
  let stores:Store[]=[],role:"owner"|"admin"|null=null;
  let studioAccess:StudioRole|null=null, plus:CreatorPlusStatus|null=null, baseBps=1000;
  if(user){
+  if(!await creatorEnrolled(user))redirect("/account");
   const db=admin();
   role=await platformRole(user);
   const {data:owned}=await db.from("prezzstore_stores").select("*")

@@ -222,3 +222,8 @@ body{background:var(--bg)}
 .product-meta .price{font-variant-numeric:tabular-nums}
 @media(max-width:800px){.profile-editor{grid-template-columns:1fr}.profile-editor>.studio-panel:last-child{grid-column:auto}}
 @media(max-width:540px){.public-profile-head{align-items:flex-start;flex-direction:column;padding:24px}.profile-symbol{min-height:66px;min-width:66px}.dash-head-actions{flex-wrap:wrap}.studio-removal{padding:14px}}
+
+.creator-join{max-width:800px;margin:28px 0}.creator-join h2{display:flex;align-items:center;gap:9px}.creator-join p{line-height:1.7;color:var(--muted)}
+.official-store{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:50px;padding:32px;border:1px solid #ab91ff3c;border-radius:20px;background:linear-gradient(100deg,#191224,#08080b 85%)}
+.official-store h2{font-size:clamp(26px,3.2vw,39px);letter-spacing:-1px;margin:12px 0}.official-store p{color:var(--muted);font-size:13px;line-height:1.7;margin:0}
+@media(max-width:600px){.official-store{align-items:flex-start;flex-direction:column;padding:22px}}

@@ -2,7 +2,8 @@ import Link from "next/link";
 import {redirect} from "next/navigation";
 import {UserRound,ShieldCheck,ShoppingBag,Palette,Gift,Store,ArrowUpRight,Mail,Wrench,BadgeCheck} from "lucide-react";
 import {admin,currentUser} from "@/lib/supabase";
-import {platformRole} from "@/lib/authority";
+import {platformRole,creatorEnrolled} from "@/lib/authority";
+import CreatorJoin from "@/components/creator-join";
 import {ensureOwnProfile,publicUserBadge} from "@/lib/profile";
 import ProfileListings from "@/components/profile-listings";
 import StudioRemoval from "@/components/studio-removal";
@@ -15,6 +16,7 @@ export default async function Account(){
  const db=admin(),role=await platformRole(user);
  const {profile,store:profileStore}=await ensureOwnProfile(user);
  const badge=await publicUserBadge(user.id);
+ const creator=await creatorEnrolled(user);
  const {data:profileItems}=await db.from("prezzstore_products").select("*")
   .eq("store_id",profileStore.id).is("removed_at",null).order("created_at",{ascending:false}).limit(100);
  const [{data:owned},{data:staff},{data:points}]=await Promise.all([
@@ -51,7 +53,7 @@ export default async function Account(){
      <Link href={"/shop/"+s.slug}>{s.name}</Link><Link href={"/dashboard?store="+s.id} className="text-link">Manage <ArrowUpRight size={14}/></Link>
     </div>):<p>You don't manage a store yet.</p>}
     {archived.length>0&&<div className="archived-studios"><h3>Deleted studios</h3>{archived.map(s=><div key={s.id} className="account-detail"><span>{s.name}</span><StudioRemoval storeId={s.id} name={s.name} archived/></div>)}</div>}
-    <Link className="button button-primary" href="/dashboard">Go to Creator Studio <ArrowUpRight size={15}/></Link>
+    {creator&&<Link className="button button-primary" href="/dashboard">Go to Creator Studio <ArrowUpRight size={15}/></Link>}
    </section>
    <section className="studio-panel"><h2><Gift size={19}/> Rewards</h2>
     <strong className="account-points">{pointsTotal.toLocaleString()} points</strong>
@@ -63,16 +65,17 @@ export default async function Account(){
     <div className="account-actions">
      <Link href="/appearance"><Palette size={17}/> Appearance</Link>
      <Link href="/orders"><ShoppingBag size={17}/> Purchases and receipts</Link>
-     <Link href="/creator-plus"><Store size={17}/> PrezzCreator+ requirements</Link>
+     {creator&&<Link href="/creator-plus"><Store size={17}/> PrezzCreator+ requirements</Link>}
      {role&&<Link href="/control"><ShieldCheck size={17}/> Marketplace controls</Link>}
     </div>
    </section>
   </div>
-  <div className="profile-section"><div className="inner-hero compact"><span className="section-tag">YOUR PROFILE</span>
+  <CreatorJoin enrolled={creator}/>
+  {creator&&<div className="profile-section"><div className="inner-hero compact"><span className="section-tag">YOUR PROFILE</span>
   <h2>Profile listings</h2><p>Publish downloads and one-time services without opening a studio.</p></div>
   <ProfileListings userId={user.id} storeId={profileStore.id}
    initialProfile={{display_name:profile.display_name,bio:profile.bio}}
    initialItems={(profileItems||[]) as Product[]}/>
-  </div>
+  </div>}
  </div>;
 }

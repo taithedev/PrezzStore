@@ -45,3 +45,10 @@ export async function requireModerator(user:SessionUser|null){
   const role=await platformRole(user);
   return role==="owner"||role==="admin"?role:null;
 }
+
+export async function creatorEnrolled(user:SessionUser|null):Promise<boolean>{
+ if(!user||!user.email_confirmed_at)return false;
+ const {data,error}=await admin().from("prezzstore_user_profiles").select("creator_enrolled").eq("user_id",user.id).maybeSingle();
+ if(error)throw error;
+ return data?.creator_enrolled===true;
+}

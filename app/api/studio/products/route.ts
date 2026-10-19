@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
-import { canCreateProduct, studioRole, platformRole } from "@/lib/authority";
+import { canCreateProduct, studioRole, platformRole, creatorEnrolled } from "@/lib/authority";
 import { moderationReason } from "@/lib/moderation";
 export const runtime="nodejs";
 const slugify=(s:string)=>s.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,75);
 export async function POST(request:NextRequest){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
+ if(!await creatorEnrolled(user))return NextResponse.json({error:"Join the Creator Program from Account Settings first"},{status:403});
  let body:Record<string,unknown>;
  try{body=await request.json();}catch{return NextResponse.json({error:"Invalid listing"},{status:400});}
  if(!body||typeof body!=="object"||Array.isArray(body))return NextResponse.json({error:"Invalid listing"},{status:400});
