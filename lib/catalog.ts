@@ -33,3 +33,11 @@ export async function storeBySlug(slug:string):Promise<Store|null>{
  if(error)console.error("Store lookup failed:",error.message);
  return data&&!data.suspended_at&&!data.deleted_at&&!data.is_profile_store?data as Store:null;
 }
+export async function allStores():Promise<Store[]>{
+ const db=await server();if(!db)return [];
+ const {data,error}=await db.from("prezzstore_stores").select("*")
+  .eq("is_profile_store",false).is("deleted_at",null).is("suspended_at",null)
+  .order("created_at",{ascending:false}).limit(200);
+ if(error){console.error("Store directory query:",error.message);return [];}
+ return (data||[]) as Store[];
+}

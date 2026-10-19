@@ -6,16 +6,15 @@ import {FileUp,ImagePlus,Plus,Save,ExternalLink,PackageOpen} from "lucide-react"
 import {SUPABASE_URL,SUPABASE_KEY} from "@/lib/public-supabase";
 import type {Product} from "@/lib/types";
 import ListingEditor from "@/components/listing-editor";
-type Profile={display_name:string;bio:string};
-export default function ProfileListings({userId,storeId,initialProfile,initialItems}:{
- userId:string;storeId:string;initialProfile:Profile;initialItems:Product[];
+import ListingExtras,{emptyExtras,extrasPayload} from "@/components/listing-extras";
+export default function ProfileListings({userId,storeId,initialItems}:{
+ userId:string;storeId:string;initialItems:Product[];
 }){
- const [profile,setProfile]=useState(initialProfile);
- const [name,setName]=useState(initialProfile.display_name),[bio,setBio]=useState(initialProfile.bio);
  const [items,setItems]=useState(initialItems);
  const [title,setTitle]=useState(""),[desc,setDesc]=useState(""),[price,setPrice]=useState("0");
  const [kind,setKind]=useState<"digital"|"service">("digital"),[stock,setStock]=useState("");
  const [cover,setCover]=useState<File|null>(null),[delivery,setDelivery]=useState<File|null>(null);
+ const [extras,setExtras]=useState(emptyExtras),[gallery,setGallery]=useState<File[]>([]);
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  async function upload(bucket:string,file:File){
   if(!SUPABASE_URL||!SUPABASE_KEY)throw new Error("Supabase not configured");
@@ -23,15 +22,6 @@ export default function ProfileListings({userId,storeId,initialProfile,initialIt
   const path=userId+"/"+crypto.randomUUID()+"-"+file.name.replace(/[^a-z0-9._-]/gi,"-").slice(-80);
   const {error:e}=await client.storage.from(bucket).upload(path,file,{contentType:file.type||"application/octet-stream"});
   if(e)throw e;return path;
- }
- async function saveProfile(e:React.FormEvent){
-  e.preventDefault();setBusy(true);setError("");setNotice("");
-  try{
-   const r=await fetch("/api/profile",{method:"PATCH",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({display_name:name,bio})});
-   const body=await r.json();if(!r.ok)throw new Error(body.error||"Unable to update");
-   setProfile(body.profile);setNotice("Profile updated.");
-  }catch(e){setError(e instanceof Error?e.message:"Could not save");}finally{setBusy(false);}
  }
  async function publish(e:React.FormEvent){
   e.preventDefault();setBusy(true);setError("");setNotice("");
@@ -42,32 +32,25 @@ export default function ProfileListings({userId,storeId,initialProfile,initialIt
     throw new Error("Cover image must be PNG/JPG/GIF/WebP under 5 MB");
    if(delivery&&delivery.size>52428800)throw new Error("Files must be 50 MB or smaller");
    if(kind==="digital"&&!delivery)throw new Error("Attach a downloadable file");
+   if(gallery.length>5||gallery.some(f=>!["image/jpeg","image/png","image/webp","image/gif"].includes(f.type)||f.size>5242880))throw new Error("Use up to five gallery images under 5 MB each");
+   const galleryPaths=await Promise.all(gallery.map(f=>upload("prezzstore_assets",f)));
    const imagePath=cover?await upload("prezzstore_assets",cover):null;
    const filePath=delivery?await upload("prezzstore_deliveries",delivery):null;
    const response=await fetch("/api/studio/products",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
     store_id:storeId,title,description:desc,price_cents:cents,
     category:kind==="service"?"Services":"Digital",kind,stock_quantity:stock===""?null:Number(stock),
-    image_path:imagePath,file_path:filePath,published:true
+    image_path:imagePath,file_path:filePath,published:true,gallery_paths:galleryPaths,...extrasPayload(extras)
    })});
    const json=await response.json();
    if(!response.ok)throw new Error(json.error||"Unable to publish");
    setItems(old=>[json.product as Product,...old]);setTitle("");setDesc("");setPrice("0");
-   setCover(null);setDelivery(null);setStock("");
+   setCover(null);setDelivery(null);setStock("");setExtras(emptyExtras);setGallery([]);
    setNotice("Added to your public profile.");
   }catch(e){setError(e instanceof Error?e.message:"Upload failed");}finally{setBusy(false);}
  }
  return <div className="profile-editor">
   {error&&<p className="form-error" role="alert">{error}</p>}
   {notice&&<p className="form-success" role="status">{notice}</p>}
-  <section className="studio-panel"><h2>Public profile</h2>
-   <p className="muted-text">Your display name and bio are visible to buyers. Your email stays private.</p>
-   <form className="form-stack" onSubmit={saveProfile}>
-    <label>Display name<input maxLength={50} minLength={2} required value={name} onChange={e=>setName(e.target.value)}/></label>
-    <label>Bio<textarea maxLength={600} value={bio} onChange={e=>setBio(e.target.value)}/></label>
-    <button className="button button-outline" disabled={busy}><Save size={16}/> Save profile</button>
-   </form>
-   <Link className="text-link" href={"/u/"+userId}>View public profile <ExternalLink size={14}/></Link>
-  </section>
   <section className="studio-panel"><h2><Plus size={18}/> Add to your profile</h2>
    <p className="muted-text">Personal profiles are for one-time items and services. To sell monthly subscriptions, use a studio.</p>
    <form className="form-stack" onSubmit={publish}>
@@ -84,6 +67,7 @@ export default function ProfileListings({userId,storeId,initialProfile,initialIt
      <label className="file-field"><ImagePlus size={17}/> Cover image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={e=>setCover(e.target.files?.[0]||null)}/></label>
      <label className="file-field"><FileUp size={17}/> {kind==="digital"?"Digital file (required)":"File (optional)"}<input type="file" onChange={e=>setDelivery(e.target.files?.[0]||null)}/></label>
     </div>
+    <ListingExtras value={extras} onChange={setExtras} gallery={gallery} onGallery={setGallery}/>
     <button className="button button-primary" disabled={busy}><Plus size={16}/> {busy?"Uploading…":"Publish to profile"}</button>
    </form>
   </section>

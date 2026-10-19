@@ -6,6 +6,7 @@ import {platformRole,creatorEnrolled} from "@/lib/authority";
 import CreatorJoin from "@/components/creator-join";
 import {ensureOwnProfile,publicUserBadge} from "@/lib/profile";
 import ProfileListings from "@/components/profile-listings";
+import ProfileIdentity from "@/components/profile-identity";
 import StudioRemoval from "@/components/studio-removal";
 import type {Product} from "@/lib/types";
 export const dynamic="force-dynamic";
@@ -18,10 +19,8 @@ export default async function Account(){
  // Regular buyer accounts must not create seller storefronts merely by opening /account.
  let own:Awaited<ReturnType<typeof ensureOwnProfile>>|null=null;
  let profileError=false;
- if(creator){
-  try{own=await ensureOwnProfile(user);}
-  catch(error){profileError=true;console.error("PrezzStore creator profile initialization:",error instanceof Error?error.message:error);}
- }
+ try{own=await ensureOwnProfile(user,{createStore:creator});}
+ catch(error){profileError=true;console.error("PrezzStore profile initialization:",error instanceof Error?error.message:error);}
  const profile=own?.profile||null,profileStore=own?.store||null;
  const profileItems=profileStore?(await db.from("prezzstore_products").select("*")
   .eq("store_id",profileStore.id).is("removed_at",null).order("created_at",{ascending:false}).limit(100)).data||[]:[];
@@ -43,7 +42,7 @@ export default async function Account(){
  const archived=(owned||[]).filter(s=>Boolean(s.deleted_at));
  const pointsTotal=(points||[]).reduce((sum,row)=>sum+row.points,0);
  return <div className="shell page-top account-screen">
-  <div className="account-heading"><div className="account-avatar"><UserRound size={28}/></div>
+  <div className="account-heading"><div className="account-avatar">{profile?.avatar_url?<img src={profile.avatar_url} alt="Your profile picture"/>:<UserRound size={28}/>}</div>
   <div><span className="section-tag">PREZZSTORE / ACCOUNT</span><h1>My account {badge==="owner"?<Wrench className="owner-symbol" aria-label="Marketplace owner" size={25}/>:badge==="verified"?<BadgeCheck className="verified-symbol" aria-label="Verified creator" size={25}/>:null}</h1><p>Manage your stores and account tools.</p></div></div>
   <div className="account-grid">
    <section className="studio-panel"><h2><Mail size={19}/> Account details</h2>
@@ -77,11 +76,14 @@ export default async function Account(){
    </section>
   </div>
   <CreatorJoin enrolled={creator}/>
+  {profile&&<ProfileIdentity userId={user.id} initial={{
+   username:profile.username,display_name:profile.display_name,bio:profile.bio,
+   avatar_url:profile.avatar_url,banner_url:profile.banner_url,website_url:profile.website_url
+  }}/>}
   {creator&&profileError&&<section className="studio-panel"><h2>Profile listings unavailable</h2><p>Your account and purchases are still accessible. Profile setup could not finish; please try again later.</p></section>}
   {creator&&profile&&profileStore&&<div className="profile-section"><div className="inner-hero compact"><span className="section-tag">YOUR PROFILE</span>
   <h2>Profile listings</h2><p>Publish downloads and one-time services without opening a studio.</p></div>
   <ProfileListings userId={user.id} storeId={profileStore.id}
-   initialProfile={{display_name:profile.display_name,bio:profile.bio}}
    initialItems={(profileItems||[]) as Product[]}/>
   </div>}
  </div>;
