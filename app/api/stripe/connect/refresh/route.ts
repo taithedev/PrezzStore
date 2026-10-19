@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
-import { createOnboardingLink, siteUrl, stripeConfigured } from "@/lib/stripe";
+import { createOnboardingLink, siteUrl, stripeConnectConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   try {
     const user = await currentUser();
     if (!user) return NextResponse.redirect(new URL("/login?next=/dashboard", origin));
-    if (!stripeConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return fail();
+    if (!stripeConnectConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return fail();
     const selected=new URL(request.url).searchParams.get("store_id")||"";
     if(selected&&!/^[0-9a-f-]{36}$/i.test(selected))return fail();
     let query=admin().from("prezzstore_stores").select("id,stripe_account_id").eq("owner_id",user.id).is("deleted_at",null);
