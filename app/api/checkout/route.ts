@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
+import { sendOrderReceipt } from "@/lib/receipt-email";
 import { marketplaceFeeBps, recipientStatus, siteUrl, stripe, stripeConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
 
@@ -83,6 +84,9 @@ export async function POST(request:NextRequest){
     const {error:freeError}=await db.from("prezzstore_orders").update({status:"paid"})
       .eq("id",order.id).eq("status","pending");
     if(freeError)throw freeError;
+    // Free item receipts are emailed only when a verified transactional sender is configured.
+    const receipt=await sendOrderReceipt(order.id);
+    if(receipt==="failed")console.warn("Free order email failed",order.id);
     return NextResponse.redirect(new URL("/orders?checkout=free",request.url),303);
   }
 

@@ -114,3 +114,13 @@ A seller must initiate and complete the hosted Stripe identity process themselve
 - A donation success redirect is informational only: Stripe's signed webhook, not the browser redirect, marks a donation paid.
 - Donate checkout requires `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, and the existing restricted sandbox Stripe secret key. No live payments until adult-owned/eligible Stripe account setup and legal review.
 - Stripe processing fees generally reduce the amount received by PrezzStore. Users should not be told all of a contribution reaches the marketplace.
+
+## Order receipts and email
+
+Buyers can open /orders and select Receipt for any paid, refunded or free order. Each server-rendered receipt checks Supabase authentication and order ownership before displaying purchase details. Use Print / save PDF in the browser. Free items also appear in order history.
+
+For automatic transactional email, configure **both** RESEND_API_KEY and PREZZSTORE_RECEIPT_FROM (a sender on a verified domain) in Vercel. This sends one receipt after signed Stripe webhook confirmation and one for a free checkout, without sending user data to public pages. Mail delivery is tracked in the private prezzstore_order_receipt_emails table. Receipts deliberately do not claim tax-exempt/charitable status.
+
+For Stripe-managed paid payment receipts, enable Settings -> Customer emails -> Successful payments in the **same Stripe account** used by your deployment and verify Checkout has customer email. Stripe and Resend may send separate emails if both are turned on: select the option you prefer. Do not paste API secrets into GitHub or browser code.
+
+The email delivery integration is optional; if no verified Resend sender is configured, receipts remain accessible on screen but PrezzStore cannot directly send emails for free items. Set up a sender before promising automatic free-item emails.

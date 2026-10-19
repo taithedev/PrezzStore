@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { admin } from "@/lib/supabase";
 import { stripe } from "@/lib/stripe";
+import { sendOrderReceipt } from "@/lib/receipt-email";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
@@ -67,6 +68,9 @@ export async function POST(request: NextRequest) {
       }
       const {error:pointsError}=await db.rpc("prezzstore_sync_order_points",{p_order_id:orderId,p_refund:false});
       if(pointsError)throw pointsError;
+      // Stripe can also email its own paid receipts when enabled in its Dashboard.
+      const delivery=await sendOrderReceipt(orderId);
+      if(delivery==="failed")console.warn("PrezzStore email receipt delivery failed",orderId);
     } else if (event.type === "checkout.session.async_payment_failed" || event.type === "checkout.session.expired") {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.metadata?.prezzstore_payment_type === "donation" && session.metadata.prezzstore_donation_id) {
