@@ -33,6 +33,8 @@ export async function POST(request:NextRequest){
  if(!isUuid(storeId)||email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return fail("Invalid studio or email");
  if(!["manager","reviewer","creator"].includes(role))return fail("Choose a collaborator role",400);
  if(!await canManageTeam(user,storeId))return fail("Only the store owner may change collaborators",403);
+ const {data:targetStore}=await admin().from("prezzstore_stores").select("slug").eq("id",storeId).maybeSingle();
+ if(targetStore?.slug==="zuzify")return fail("Official Zuzify shop access is managed through PrezzStore platform roles",403);
  const db=admin();
  const {data:ownerStore}=await db.from("prezzstore_stores").select("owner_id").eq("id",storeId).maybeSingle();
  if(!ownerStore)return fail("Store not found",404);
