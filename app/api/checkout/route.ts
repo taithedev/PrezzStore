@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { sendOrderReceipt } from "@/lib/receipt-email";
@@ -111,7 +110,6 @@ export async function POST(request:NextRequest){
   const checkout=await stripe().checkout.sessions.create({
    mode:recurring?"subscription":"payment",
    customer_email:user.email,client_reference_id:order.id,
-   integration_identifier:"prezzstore.checkout."+Array.from(randomBytes(8),b=>String.fromCharCode(97+b%26)).join(""),
    line_items:[{price_data:{currency:"usd",unit_amount:finalPrice,
      product_data:{name:product.title,description:(product.description??"").slice(0,350)},
      ...(recurring?{recurring:{interval:"month" as const}}:{})},quantity:1}],
