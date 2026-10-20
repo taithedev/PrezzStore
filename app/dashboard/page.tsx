@@ -30,9 +30,15 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<{st
    const {data:zuzify}=await db.from("prezzstore_stores").select("*").eq("slug","zuzify").is("deleted_at",null).maybeSingle();
    if(zuzify)visible.push(zuzify as Store);
   }
+  // Never expose the official Zuzify studio dashboard to ordinary owners or collaborators.
+  if(role!=="owner"&&role!=="admin")visible=visible.filter(s=>s.slug!=="zuzify");
+  if(role==="admin"){
+   const {data:zuzify}=await db.from("prezzstore_stores").select("*").eq("slug","zuzify").is("deleted_at",null).maybeSingle();
+   if(zuzify)visible.push(zuzify as Store);
+  }
   stores=Array.from(new Map(visible.map(x=>[x.id,x])).values());
   const requested=(await searchParams).store;
-  store=stores.find(s=>s.id===requested)||stores.find(s=>s.slug==="zuzify"&&role==="owner")||stores[0]||null;
+  store=stores.find(s=>s.id===requested)||stores.find(s=>s.slug==="zuzify"&&(role==="owner"||role==="admin"))||stores[0]||null;
   if(store){
    studioAccess=await studioRole(user,store.id);
    plus=await creatorPlusStatus(store.id);
