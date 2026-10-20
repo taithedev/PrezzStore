@@ -66,6 +66,10 @@ export async function POST(request: NextRequest) {
           throw new Error("No matching order for completed Stripe checkout");
         }
       }
+      // Allocate one distinct license only after Stripe confirms payment.
+      // No license is exposed in the webhook response.
+      const {error:licenseError}=await db.rpc("prezzstore_assign_license",{p_order_id:orderId});
+      if(licenseError)throw licenseError;
       const {error:pointsError}=await db.rpc("prezzstore_sync_order_points",{p_order_id:orderId,p_refund:false});
       if(pointsError)throw pointsError;
       // Stripe can also email its own paid receipts when enabled in its Dashboard.
