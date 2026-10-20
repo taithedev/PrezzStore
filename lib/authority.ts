@@ -19,8 +19,12 @@ export async function studioRole(user:SessionUser, storeId:string):Promise<Studi
     .select("owner_id,slug").eq("id",storeId).maybeSingle();
   if(error)throw error;
   if(!store)return null;
+  // Reserve the official Zuzify store for PrezzStore platform staff, not regular studio owners or invitees.
+  if(store.slug==="zuzify"){
+    const role=await platformRole(user);
+    return role==="owner"?"owner":role==="admin"?"manager":null;
+  }
   if(store.owner_id===user.id)return "owner";
-  if(store.slug==="zuzify" && await platformRole(user)==="owner")return "owner";
   const {data:staff,error:staffError}=await admin().from("prezzstore_store_managers")
     .select("role").eq("store_id",storeId).eq("user_id",user.id).maybeSingle();
   if(staffError)throw staffError;
