@@ -15,6 +15,7 @@ async function handle(req:NextRequest,id:string,action:"delete"|"restore"){
  if(error||!studio)return NextResponse.json({error:"Studio not found"},{status:404});
  if(studio.is_profile_store)return NextResponse.json({error:"Personal profiles cannot be deleted as studios"},{status:403});
  const role=await platformRole(user);
+ if(studio.slug==="zuzify"&&role!=="owner")return NextResponse.json({error:"Only a PrezzStore platform owner may manage the official Zuzify shop"},{status:403});
  if(studio.owner_id!==user.id&&role!=="owner")return NextResponse.json({error:"Only this studio's owner or a marketplace owner can remove it"},{status:403});
  if(action==="delete"){
   if(body.confirm_name!==studio.name)return NextResponse.json({error:"Type the studio name exactly to confirm"},{status:400});
