@@ -6,7 +6,15 @@ export async function GET(request:NextRequest) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const enabled = stripeConnectConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
-  if (!enabled) return NextResponse.json({ configured: false, status: "not_configured" }, { headers: { "Cache-Control": "no-store" } });
+  if (!enabled) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY || process.env.PREZZSTORE_STRIPE_SECRET_KEY;
+    const missing = [
+      ...(!stripeKey ? ["Stripe server key"] : []),
+      ...(stripeKey && !stripeConnectConfigured() ? ["Stripe key for this deployment environment"] : []),
+      ...(!process.env.SUPABASE_SERVICE_ROLE_KEY ? ["Supabase server key"] : [])
+    ];
+    return NextResponse.json({ configured: false, status: "not_configured", missing }, { headers: { "Cache-Control": "no-store" } });
+  }
   try {
     const selected=new URL(request.url).searchParams.get("store_id")||"";
     if(selected&&!/^[0-9a-f-]{36}$/i.test(selected))return NextResponse.json({error:"Invalid store ID"},{status:400});
