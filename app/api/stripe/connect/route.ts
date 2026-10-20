@@ -1,3 +1,4 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextRequest,NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { createRecipient, createOnboardingLink, stripeConnectConfigured } from "@/lib/stripe";
@@ -87,7 +88,7 @@ function describeOnboardingFailure(error: unknown, step: OnboardingStep): { mess
 
 }
 
-export async function POST(request:NextRequest) {
+async function handlePOST(request:NextRequest) {
   const user = await currentUser();
   if (!user?.email) return NextResponse.json({ error: "Sign in to manage your store." }, { status: 401 });
   if (!stripeConnectConfigured()) return NextResponse.json({ error: "Seller onboarding is not configured yet." }, { status: 503 });
@@ -149,3 +150,5 @@ export async function POST(request:NextRequest) {
     });
   }
 }
+
+export const POST=apiRoute(handlePOST);

@@ -18,7 +18,7 @@ test("seller listing changes verify ownership and restrict editable fields",()=>
 test("downloads require paid orders and seller-owned file paths",()=>{
  const s=read("app/api/download/[id]/route.ts");
  assert.match(s,/order.status!=="paid"/);
- assert.match(s,/product.asset_owner_id\|\|order.seller_id/);
+ assert.match(s,/delivery_asset_owner_id/);
 });
 test("Stripe requires signing secret for checkout and live launch is gated",()=>{
  const s=read("app/api/checkout/route.ts"),keys=read("lib/stripe.ts");
@@ -122,7 +122,7 @@ test("verified storefront management and role controls are server-side",()=>{
 test("free product fulfillment, discounts and stock are server mediated",()=>{
  const route=read("app/api/checkout/route.ts");
  assert.match(route,/prezzstore_reserve_stock/);
- assert.match(route,/prezzstore_claim_discount/);
+ assert.match(route,/prezzstore_claim_order_discount/);
  assert.match(route,/finalPrice===0/);
  assert.match(route,/marketplaceFeeBps/);
  assert.match(route,/stock_quantity/);

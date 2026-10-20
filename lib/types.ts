@@ -17,4 +17,6 @@ export type Order = {
   amount_cents: number; status: "pending" | "paid" | "failed" | "refunded";
   stripe_session_id: string | null; stripe_subscription_id: string | null; membership_status: "active" | "inactive";
   created_at: string; product?: Product;
+  product_title?:string|null; store_name?:string|null; product_kind?:ProductKind|null;
+  delivery_file_path?:string|null; delivery_asset_owner_id?:string|null; fulfillment_note?:string|null;
 };

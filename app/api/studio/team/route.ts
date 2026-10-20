@@ -1,3 +1,4 @@
+import {apiRoute} from "@/lib/api-route";
 import {NextRequest,NextResponse} from "next/server";
 import {admin,currentUser} from "@/lib/supabase";
 import {canManageStore,canManageTeam,studioRole} from "@/lib/authority";
@@ -5,7 +6,7 @@ import {collaboratorLimit,creatorPlusStatus} from "@/lib/creator-plus";
 export const runtime="nodejs";
 const isUuid=(s:string)=>/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(s);
 const fail=(error:string,status=400)=>NextResponse.json({error},{status,headers:{"Cache-Control":"no-store"}});
-export async function GET(request:NextRequest){
+async function handleGET(request:NextRequest){
  const user=await currentUser();if(!user)return fail("Sign in first",401);
  const storeId=new URL(request.url).searchParams.get("store_id")||"";
  if(!isUuid(storeId))return fail("Invalid store");
@@ -25,7 +26,7 @@ export async function GET(request:NextRequest){
  const plus=await creatorPlusStatus(storeId);
  return NextResponse.json({role,canInvite:role==="owner",ownerId:store.owner_id,members,limit:collaboratorLimit(plus.qualified)},{headers:{"Cache-Control":"no-store"}});
 }
-export async function POST(request:NextRequest){
+async function handlePOST(request:NextRequest){
  const user=await currentUser();if(!user)return fail("Sign in first",401);
  let body:Record<string,unknown>;
  try{body=await request.json();}catch{return fail("Invalid request");}
@@ -49,7 +50,7 @@ export async function POST(request:NextRequest){
  if(!result)return fail("No seats available for your current plan",409);
  return NextResponse.json({ok:true,message:role+" access granted. The user can open this studio now."});
 }
-export async function DELETE(request:NextRequest){
+async function handleDELETE(request:NextRequest){
  const user=await currentUser();if(!user)return fail("Sign in first",401);
  let body:Record<string,unknown>;
  try{body=await request.json();}catch{return fail("Invalid request");}
@@ -60,3 +61,7 @@ export async function DELETE(request:NextRequest){
  if(error)return fail("Unable to remove collaborator",503);
  return NextResponse.json({ok:true});
 }
+
+export const GET=apiRoute(handleGET);
+export const POST=apiRoute(handlePOST);
+export const DELETE=apiRoute(handleDELETE);

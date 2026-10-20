@@ -1,8 +1,9 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextRequest,NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { recipientStatus, stripeConnectConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
-export async function GET(request:NextRequest) {
+async function handleGET(request:NextRequest) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const enabled = stripeConnectConfigured() && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -23,3 +24,5 @@ export async function GET(request:NextRequest) {
     return NextResponse.json({ error: "Unable to verify Stripe status." }, { status: 502 });
   }
 }
+
+export const GET=apiRoute(handleGET);

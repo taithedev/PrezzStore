@@ -1,3 +1,5 @@
+import {apiRoute} from "@/lib/api-route";
+import {verifyUpload} from "@/lib/uploads";
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { canCreateProduct, studioRole, platformRole, creatorEnrolled } from "@/lib/authority";
@@ -5,7 +7,7 @@ import { moderationReason } from "@/lib/moderation";
 import {optionalDetails} from "@/lib/listing-options";
 export const runtime="nodejs";
 const slugify=(s:string)=>s.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,75)||"listing";
-export async function POST(request:NextRequest){
+async function handlePOST(request:NextRequest){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
  if(!await creatorEnrolled(user))return NextResponse.json({error:"Join the Creator Program from Account Settings first"},{status:403});
  let body:Record<string,unknown>;
@@ -23,8 +25,9 @@ export async function POST(request:NextRequest){
  const gallery=body.gallery_paths??[];
  if(!Array.isArray(gallery)||gallery.length>5||gallery.some(p=>typeof p!=="string"||!p.startsWith(user.id+"/")||p.includes("..")||!/^[a-zA-Z0-9._/-]+$/.test(p)))
   return NextResponse.json({error:"Upload up to five gallery images to your account"},{status:400});
+ if(!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(storeId))return NextResponse.json({error:"Invalid store"},{status:400});
  if(title.length<3||title.length>120||description.length>10000||category.length<1||category.length>64
-  ||!Number.isInteger(price)||Number(price)<0||Number(price)>50000000
+  ||!Number.isInteger(price)||Number(price)<0||(Number(price)>0&&Number(price)<50)||Number(price)>50000000
   ||!["digital","membership","service"].includes(String(kind))
   ||(kind==="membership"&&Number(price)===0)
   ||(kind==="digital"&&!filePath)
@@ -43,6 +46,13 @@ export async function POST(request:NextRequest){
  const {data:store}=await db.from("prezzstore_stores").select("id,suspended_at,deleted_at,is_profile_store").eq("id",storeId).maybeSingle();
  if(!store||store.suspended_at||store.deleted_at)return NextResponse.json({error:"Store is not available"},{status:403});
  if(store.is_profile_store&&kind==="membership")return NextResponse.json({error:"Subscriptions require a studio"},{status:400});
+ try{
+  await Promise.all([
+   ...(imagePath?[verifyUpload("prezzstore_assets",imagePath,user.id)]:[]),
+   ...(filePath?[verifyUpload("prezzstore_deliveries",filePath,user.id)]:[]),
+   ...gallery.map(p=>verifyUpload("prezzstore_assets",p,user.id))
+  ]);
+ }catch(e){return NextResponse.json({error:(e as Error).message},{status:400});}
  const {data:product,error}=await db.from("prezzstore_products").insert({
   store_id:store.id,title,slug:slugify(title)+"-"+crypto.randomUUID().slice(0,8),
   description,category:kind==="membership"?"Memberships":category,
@@ -55,3 +65,5 @@ export async function POST(request:NextRequest){
  if(reason&&override)await db.from("prezzstore_moderation_log").insert({moderator_id:user.id,target_type:"content",target_id:product.id,action:"approved_false_positive",note:reason});
  return NextResponse.json({product},{status:201});
 }
+
+export const POST=apiRoute(handlePOST);

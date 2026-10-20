@@ -1,4 +1,17 @@
-import {SUPABASE_URL,SUPABASE_KEY} from "@/lib/public-supabase";
 import {NextRequest,NextResponse} from "next/server";
 import {createServerClient} from "@supabase/ssr";
-export async function GET(req:NextRequest){const code=new URL(req.url).searchParams.get("code");const response=NextResponse.redirect(new URL("/dashboard",req.url));const url=SUPABASE_URL,key=SUPABASE_KEY;if(!code||!url||!key)return NextResponse.redirect(new URL("/login",req.url));const sb=createServerClient(url,key,{cookies:{getAll(){return req.cookies.getAll()},setAll(items){items.forEach(({name,value,options})=>response.cookies.set(name,value,options));}}});const {error}=await sb.auth.exchangeCodeForSession(code);return error?NextResponse.redirect(new URL("/login",req.url)):response;}
+import {SUPABASE_URL,SUPABASE_KEY} from "@/lib/public-supabase";
+import {safeNext} from "@/lib/safe-next";
+export async function GET(req:NextRequest){
+ const code=req.nextUrl.searchParams.get("code");
+ const next=safeNext(req.nextUrl.searchParams.get("next"));
+ const failed=()=>NextResponse.redirect(new URL("/login?error=confirmation&next="+encodeURIComponent(next),req.url));
+ if(!code||!SUPABASE_URL||!SUPABASE_KEY)return failed();
+ const response=NextResponse.redirect(new URL(next,req.url));
+ const db=createServerClient(SUPABASE_URL,SUPABASE_KEY,{cookies:{
+  getAll:()=>req.cookies.getAll(),
+  setAll(items){items.forEach(({name,value,options})=>response.cookies.set(name,value,options));}
+ }});
+ try{const {error}=await db.auth.exchangeCodeForSession(code);return error?failed():response;}
+ catch{return failed();}
+}

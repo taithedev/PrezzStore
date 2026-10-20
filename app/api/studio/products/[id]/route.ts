@@ -1,10 +1,12 @@
+import {apiRoute} from "@/lib/api-route";
+import {verifyUpload} from "@/lib/uploads";
 import { NextRequest,NextResponse } from "next/server";
 import { admin,currentUser } from "@/lib/supabase";
 import { canManageStore,studioRole,platformRole } from "@/lib/authority";
 import { moderationReason } from "@/lib/moderation";
 import {optionalDetails} from "@/lib/listing-options";
 export const runtime="nodejs";
-export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){
+async function handlePATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
  const {id}=await params;
  if(!/^[0-9a-f-]{36}$/i.test(id))return NextResponse.json({error:"Invalid product ID"},{status:400});
@@ -27,9 +29,25 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  if("title" in body){if(typeof body.title!=="string"||body.title.trim().length<3||body.title.trim().length>120)return NextResponse.json({error:"Invalid title"},{status:400});updates.title=body.title.trim();}
  if("description" in body){if(typeof body.description!=="string"||body.description.length>10000)return NextResponse.json({error:"Description is too long"},{status:400});updates.description=body.description.trim();}
  if("category" in body){if(typeof body.category!=="string"||body.category.length>64||!body.category.trim())return NextResponse.json({error:"Invalid category"},{status:400});updates.category=body.category.trim();}
- if("price_cents" in body){if(!Number.isInteger(body.price_cents)||Number(body.price_cents)<0||Number(body.price_cents)>50000000||(product.kind==="membership"&&Number(body.price_cents)===0))return NextResponse.json({error:"Invalid price"},{status:400});updates.price_cents=body.price_cents;}
+ if("price_cents" in body){if(!Number.isInteger(body.price_cents)||Number(body.price_cents)<0||(Number(body.price_cents)>0&&Number(body.price_cents)<50)||Number(body.price_cents)>50000000||(product.kind==="membership"&&Number(body.price_cents)===0))return NextResponse.json({error:"Invalid price"},{status:400});updates.price_cents=body.price_cents;}
  if("stock_quantity" in body){const stock=body.stock_quantity;if(stock!==null&&(!Number.isInteger(stock)||Number(stock)<0||Number(stock)>1000000))return NextResponse.json({error:"Invalid stock"},{status:400});updates.stock_quantity=product.kind==="membership"?null:stock;}
- if("published" in body){if(role==="creator")return NextResponse.json({error:"Creators must submit drafts for review"},{status:403});if(typeof body.published!=="boolean")return NextResponse.json({error:"Invalid listing status"},{status:400});if(body.published&&product.kind==="digital"&&!product.file_path)return NextResponse.json({error:"Upload a delivery file first"},{status:409});updates.published=body.published;}
+ try{
+  if("image_path" in body){
+   const path=body.image_path===null?null:await verifyUpload("prezzstore_assets",body.image_path,user.id);
+   updates.image_url=path?db.storage.from("prezzstore_assets").getPublicUrl(path).data.publicUrl:null;
+  }
+  if("file_path" in body){
+   if(body.file_path===null&&product.kind==="digital")return NextResponse.json({error:"Digital products need a delivery file."},{status:400});
+   const path=body.file_path===null?null:await verifyUpload("prezzstore_deliveries",body.file_path,user.id);
+   Object.assign(updates,{file_path:path,asset_owner_id:user.id});
+  }
+  if("gallery_paths" in body){
+   if(!Array.isArray(body.gallery_paths)||body.gallery_paths.length>5)throw new Error("Use up to five gallery images.");
+   const paths=await Promise.all(body.gallery_paths.map(p=>verifyUpload("prezzstore_assets",p,user.id)));
+   updates.gallery_urls=paths.map(p=>db.storage.from("prezzstore_assets").getPublicUrl(p).data.publicUrl);
+  }
+ }catch(e){return NextResponse.json({error:(e as Error).message},{status:400});}
+ if("published" in body){if(role==="creator")return NextResponse.json({error:"Creators must submit drafts for review"},{status:403});if(typeof body.published!=="boolean")return NextResponse.json({error:"Invalid listing status"},{status:400});if(body.published&&product.kind==="digital"&&!(updates.file_path||product.file_path))return NextResponse.json({error:"Upload a delivery file first"},{status:409});updates.published=body.published;}
  const reason=moderationReason(updates.title??product.title,updates.description??product.description,updates.subtitle,updates.fulfillment_note,...((updates.tags as string[])||[]),...((updates.highlights as string[])||[]));
  const override=body.moderationOverride===true&&Boolean(await platformRole(user));
  if(reason&&!override)return NextResponse.json({error:"Listing needs review: "+reason},{status:422});
@@ -42,7 +60,7 @@ export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:str
  return NextResponse.json({product:data});
 }
 
-export async function DELETE(_:NextRequest,{params}:{params:Promise<{id:string}>}){
+async function handleDELETE(_:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in"},{status:401});
  const {id}=await params;if(!/^[a-f0-9-]{36}$/i.test(id))return NextResponse.json({error:"Invalid listing"},{status:400});
  const db=admin();
@@ -60,3 +78,6 @@ export async function DELETE(_:NextRequest,{params}:{params:Promise<{id:string}>
  });
  return NextResponse.json({ok:true});
 }
+
+export const PATCH=apiRoute(handlePATCH);
+export const DELETE=apiRoute(handleDELETE);

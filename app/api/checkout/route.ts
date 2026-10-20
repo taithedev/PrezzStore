@@ -1,3 +1,4 @@
+import {apiRoute} from "@/lib/api-route";
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
@@ -14,13 +15,13 @@ function failure(message: string, status: number, isForm = false, requestUrl?: s
   }
   return NextResponse.json({error:message},{status});
 }
-export async function POST(request:NextRequest){
+async function handlePOST(request:NextRequest){
  const contentType=request.headers.get("content-type")||"";
  const isForm=contentType.includes("application/x-www-form-urlencoded")||contentType.includes("multipart/form-data");
  const reject=(msg:string,status:number)=>failure(msg,status,isForm,request.url);
  const user=await currentUser();
  if(!user)return isForm?NextResponse.redirect(new URL("/login?next=/orders",request.url),303):reject("Sign in to purchase",401);
- if(!user.email)return reject("An email is required",400);
+ if(!user.email||!user.email_confirmed_at)return reject("Confirm your email before purchasing.",403);
  let productId="",couponCode="",ownerFree=false;
  try{
    const body=contentType.includes("application/json")?await request.json():await request.formData();
@@ -30,10 +31,10 @@ export async function POST(request:NextRequest){
  }catch{return reject("Invalid checkout request",400);}
  if(!/^[a-f0-9-]{36}$/i.test(productId)||couponCode.length>32)return reject("Invalid product or coupon",400);
  const db=admin();
- let pendingOrderId:string|null=null,discountClaimed:string|null=null;
+ let pendingOrderId:string|null=null,pendingSessionId:string|null=null;
  try{
   const {data:product,error:pe}=await db.from("prezzstore_products")
-    .select("id,store_id,title,description,price_cents,kind,published,stock_quantity,removed_at")
+    .select("id,store_id,title,description,price_cents,kind,published,stock_quantity,removed_at,file_path,asset_owner_id,fulfillment_note")
     .eq("id",productId).eq("published",true).is("removed_at",null).maybeSingle();
   if(pe)throw pe;
   if(!product||!Number.isInteger(product.price_cents)||product.price_cents<0||product.price_cents>50000000)
@@ -41,12 +42,12 @@ export async function POST(request:NextRequest){
   if(product.stock_quantity!==null && product.stock_quantity<1)return reject("Out of stock",409);
   if(!["digital","membership","service"].includes(product.kind))return reject("Invalid product type",400);
   if(product.kind==="membership"&&product.price_cents===0)return reject("Monthly memberships require a price",400);
-  const {data:store,error:se}=await db.from("prezzstore_stores").select("owner_id,stripe_account_id,suspended_at,deleted_at,is_profile_store")
+  const {data:store,error:se}=await db.from("prezzstore_stores").select("owner_id,name,stripe_account_id,suspended_at,deleted_at,is_profile_store")
     .eq("id",product.store_id).maybeSingle();
   if(se)throw se;
   if(!store||store.suspended_at||store.deleted_at)return reject("This seller is unavailable",409);
   if(store.is_profile_store&&product.kind==="membership")return reject("Subscriptions are only available in studios",400);
-  if(store.owner_id===user.id)return reject("You cannot purchase your own product",400);
+  if(store.owner_id===user.id&&!ownerFree)return reject("You cannot purchase your own product",400);
   if(ownerFree && await platformRole(user)!=="owner")return reject("Owner-only checkout option",403);
   if(ownerFree && product.kind==="membership")return reject("Recurring memberships cannot be obtained with owner free checkout",400);
   let finalPrice:number=product.price_cents,discountId:string|null=null;
@@ -62,6 +63,14 @@ export async function POST(request:NextRequest){
     discountId=coupon.id;
   }
   if(ownerFree){finalPrice=0;discountId=null;}
+  if(product.kind==="membership"&&finalPrice===0)return reject("A membership must have a recurring price.",400);
+  if(finalPrice===0||product.kind==="membership"){
+   let priorQuery=db.from("prezzstore_orders").select("id").eq("buyer_id",user.id).eq("product_id",product.id).eq("status","paid").limit(1);
+   if(product.kind==="membership")priorQuery=priorQuery.eq("membership_status","active");
+   const {data:prior,error:priorError}=await priorQuery.maybeSingle();
+   if(priorError)throw priorError;
+   if(prior)return isForm?NextResponse.redirect(new URL("/orders",request.url),303):NextResponse.json({url:"/orders"});
+  }
   if(finalPrice>0&&finalPrice<50)return reject("Discounted total must be at least $0.50",400);
   if(finalPrice>0){
     if(!stripeConfigured()||!process.env.STRIPE_WEBHOOK_SECRET||!process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -71,7 +80,10 @@ export async function POST(request:NextRequest){
   }
   const {data:order,error:oe}=await db.from("prezzstore_orders").insert({
    buyer_id:user.id,seller_id:store.owner_id,product_id:product.id,
-   amount_cents:finalPrice,status:"pending",discount_id:discountId,owner_comped:ownerFree
+   amount_cents:finalPrice,status:"pending",discount_id:discountId,owner_comped:ownerFree,
+   product_title:product.title,store_name:store.name,product_kind:product.kind,
+   delivery_file_path:product.file_path,delivery_asset_owner_id:product.asset_owner_id||store.owner_id,
+   fulfillment_note:product.fulfillment_note
   }).select("id").single();
   if(oe||!order)throw oe||new Error("Unable to create order");
   pendingOrderId=order.id;
@@ -86,22 +98,18 @@ export async function POST(request:NextRequest){
    }
   }
 
-  // Free listings are delivered without a payment processor and never earn purchase points.
-  if(finalPrice===0){
-    const {error:freeError}=await db.from("prezzstore_orders").update({status:"paid"})
-      .eq("id",order.id).eq("status","pending");
-    if(freeError)throw freeError;
-    // Free item receipts are emailed only when a verified transactional sender is configured.
-    const receipt=await sendOrderReceipt(order.id);
-    if(receipt==="failed")console.warn("Free order email failed",order.id);
-    return NextResponse.redirect(new URL("/orders?checkout=free",request.url),303);
-  }
-
   if(discountId){
-    const {data:claimed,error:claimError}=await db.rpc("prezzstore_claim_discount",{p_id:discountId});
-    if(claimError)throw claimError;
-    if(!claimed)throw new Error("Discount usage limit reached");
-    discountClaimed=discountId;
+   const {data:claimed,error:claimError}=await db.rpc("prezzstore_claim_order_discount",{p_order_id:order.id});
+   if(claimError)throw claimError;
+   if(!claimed)throw new Error("Discount usage limit reached");
+  }
+  // Free listings use the same atomic completion path without Stripe or purchase points.
+  if(finalPrice===0){
+   const {error:freeError}=await db.rpc("prezzstore_settle_order",{p_order_id:order.id,p_status:"paid"});
+   if(freeError)throw freeError;
+   await sendOrderReceipt(order.id).catch(()=>console.warn("Free order receipt could not be sent",order.id));
+   const url="/orders?checkout=free";
+   return isForm?NextResponse.redirect(new URL(url,request.url),303):NextResponse.json({url});
   }
 
   const recurring=product.kind==="membership";
@@ -124,23 +132,31 @@ export async function POST(request:NextRequest){
      metadata:{prezzstore_order_id:order.id,prezzstore_product_id:product.id}
    }}),
    metadata:{prezzstore_order_id:order.id,prezzstore_product_id:product.id,prezzstore_buyer_id:user.id},
-   success_url:siteUrl()+"/orders?checkout=success",cancel_url:siteUrl()+"/products/"+product.id
+   expires_at:Math.floor(Date.now()/1000)+1800,
+   success_url:siteUrl()+"/orders?checkout=success&order="+order.id,cancel_url:siteUrl()+"/products/"+product.id+"?checkout=cancelled"
   },{idempotencyKey:"prezzstore_checkout_"+order.id});
+  pendingSessionId=checkout.id;
   if(!checkout.url)throw new Error("Stripe did not create checkout");
   const {data:saved,error:ue}=await db.from("prezzstore_orders").update({stripe_session_id:checkout.id})
     .eq("id",order.id).eq("status","pending").select("id").maybeSingle();
   if(ue||!saved)throw ue||new Error("Unable to link checkout");
-  return NextResponse.redirect(checkout.url,303);
+  return isForm?NextResponse.redirect(checkout.url,303):NextResponse.json({url:checkout.url});
  }catch(error){
   console.error("PrezzStore checkout",error instanceof Error?error.message:error);
   if(pendingOrderId){
-   const {data:existing}=await db.from("prezzstore_orders").select("status").eq("id",pendingOrderId).maybeSingle();
-   if(existing?.status==="pending"){
-    await db.from("prezzstore_orders").update({status:"failed"}).eq("id",pendingOrderId);
-    await db.rpc("prezzstore_release_stock",{p_order_id:pendingOrderId});
-    if(discountClaimed)await db.rpc("prezzstore_release_discount",{p_id:discountClaimed});
+   // Never release inventory while a Stripe session may still accept payment.
+   let mayRelease=!pendingSessionId;
+   if(pendingSessionId){
+    try{const expired=await stripe().checkout.sessions.expire(pendingSessionId);mayRelease=expired.status==="expired";}
+    catch{console.error("Checkout session needs reconciliation",pendingOrderId,pendingSessionId);}
+   }
+   if(mayRelease){
+    const {error:cleanupError}=await db.rpc("prezzstore_settle_order",{p_order_id:pendingOrderId,p_status:"failed"});
+    if(cleanupError)console.error("Checkout cleanup failed",pendingOrderId,cleanupError.code);
    }
   }
   return reject("Checkout is unavailable. Please try again.",502);
  }
 }
+
+export const POST=apiRoute(handlePOST);

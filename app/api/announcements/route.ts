@@ -1,7 +1,8 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextResponse } from "next/server";
 import { admin } from "@/lib/supabase";
 export const runtime="nodejs";
-export async function GET(){
+async function handleGET(){
  try{
  const {data,error}=await admin().from("prezzstore_announcements")
    .select("id,title,body,category,created_at").eq("published",true)
@@ -12,3 +13,5 @@ export async function GET(){
  return NextResponse.json({items:[]},{status:503});
  }
 }
+
+export const GET=apiRoute(handleGET);

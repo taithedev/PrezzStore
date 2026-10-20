@@ -1,8 +1,9 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextRequest,NextResponse } from "next/server";
 import { currentUser, admin } from "@/lib/supabase";
 import { canEditStore,platformRole } from "@/lib/authority";
 import { moderationReason } from "@/lib/moderation";
-export async function PATCH(req:NextRequest){
+async function handlePATCH(req:NextRequest){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
  let body;try{body=await req.json();}catch{return NextResponse.json({error:"Invalid form"},{status:400});}
  const storeId=String(body.store_id||""),description=String(body.description||"").trim();
@@ -28,3 +29,5 @@ export async function PATCH(req:NextRequest){
  if(error){console.error("Store appearance:",error.code,error.message);return NextResponse.json({error:"Failed to save appearance. Please retry."},{status:502});}
  return NextResponse.json({store:data});
 }
+
+export const PATCH=apiRoute(handlePATCH);

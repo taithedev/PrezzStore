@@ -1,10 +1,11 @@
+import {apiRoute} from "@/lib/api-route";
 import {NextRequest,NextResponse} from "next/server";
 import {admin,currentUser} from "@/lib/supabase";
 import {ensureOwnProfile} from "@/lib/profile";
 import {creatorEnrolled} from "@/lib/authority";
 import {moderationReason} from "@/lib/moderation";
 export const runtime="nodejs";
-export async function PATCH(request:NextRequest){
+async function handlePATCH(request:NextRequest){
  const user=await currentUser();
  if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
  let body:Record<string,unknown>;
@@ -44,3 +45,5 @@ export async function PATCH(request:NextRequest){
  if(storeError)console.error("Profile byline update:",storeError.message);}
  return NextResponse.json({profile:data});
 }
+
+export const PATCH=apiRoute(handlePATCH);

@@ -1,3 +1,4 @@
+import {apiRoute} from "@/lib/api-route";
 import {NextRequest,NextResponse} from "next/server";
 import {admin,currentUser} from "@/lib/supabase";
 import {platformRole} from "@/lib/authority";
@@ -36,9 +37,12 @@ async function handle(req:NextRequest,id:string,action:"delete"|"restore"){
  });
  return NextResponse.json({ok:true,message:"Studio restored."});
 }
-export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:string}>}){
+async function handleDELETE(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  return handle(request,(await params).id,"delete");
 }
-export async function POST(request:NextRequest,{params}:{params:Promise<{id:string}>}){
+async function handlePOST(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  return handle(request,(await params).id,"restore");
 }
+
+export const DELETE=apiRoute(handleDELETE);
+export const POST=apiRoute(handlePOST);

@@ -1,3 +1,4 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextRequest, NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { canManageTeam, platformRole, requireModerator } from "@/lib/authority";
@@ -6,7 +7,7 @@ import {creatorPlusStatus,collaboratorLimit} from "@/lib/creator-plus";
 export const runtime="nodejs";
 const fail=(error:string,status=400)=>NextResponse.json({error},{status});
 const uuid=(x:unknown)=>typeof x==="string"&&/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(x);
-export async function POST(request:NextRequest){
+async function handlePOST(request:NextRequest){
  const user=await currentUser(),role=await requireModerator(user);
  if(!user||!role)return fail("Owner or administrator access required",403);
  let body:Record<string,unknown>;
@@ -143,3 +144,5 @@ export async function POST(request:NextRequest){
   return fail("Unable to save change. Check server configuration.",502);
  }
 }
+
+export const POST=apiRoute(handlePOST);

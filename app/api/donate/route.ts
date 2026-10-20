@@ -1,3 +1,4 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextRequest, NextResponse } from "next/server";
 import { admin } from "@/lib/supabase";
 import { siteUrl, stripe, stripeConfigured } from "@/lib/stripe";
@@ -16,7 +17,7 @@ function redirect(request: NextRequest, reason: "amount" | "setup" | "unavailabl
   return NextResponse.redirect(new URL("/donate?error=" + reason, request.url), 303);
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const contentType = request.headers.get("content-type") || "";
   if (!contentType.includes("application/x-www-form-urlencoded") && !contentType.includes("multipart/form-data")) {
     return NextResponse.json({ error: "Only donation forms are accepted." }, { status: 415 });
@@ -68,3 +69,5 @@ export async function POST(request: NextRequest) {
     return redirect(request, "unavailable");
   }
 }
+
+export const POST=apiRoute(handlePOST);

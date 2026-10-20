@@ -52,8 +52,10 @@ export default function Studio({userId,userEmail,initialStore,initialStores,plat
   e.preventDefault();if(!userId)return;setBusy(true);setError("");setNotice("");
   try{
    const slug=slugify(shopSlug||shopName);if(slug.length<3)throw new Error("Shop URL needs 3+ characters.");
-   const {data,error}=await db().from("prezzstore_stores").insert({owner_id:userId,name:shopName.trim(),slug,description:shopDesc}).select().single();
-   if(error)throw error;setStore(data as Store);setNotice("Store created successfully.");
+   const response=await fetch("/api/studio/stores",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:shopName.trim(),slug,description:shopDesc})});
+   const result=await response.json();
+   if(!response.ok)throw new Error(result.error||"Could not create your store.");
+   window.location.assign("/dashboard?store="+encodeURIComponent(result.store.id));
   }catch(e){setError(e instanceof Error?e.message:"Failed to create store");}finally{setBusy(false);}
  }
  async function createProduct(e:React.FormEvent) {

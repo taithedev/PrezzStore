@@ -1,9 +1,10 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextRequest,NextResponse } from "next/server";
 import { admin,currentUser } from "@/lib/supabase";
 import { canApproveProduct,platformRole } from "@/lib/authority";
 import { moderationReason } from "@/lib/moderation";
 export const runtime="nodejs";
-export async function POST(request:NextRequest,{params}:{params:Promise<{id:string}>}){
+async function handlePOST(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const user=await currentUser();if(!user)return NextResponse.json({error:"Sign in first"},{status:401});
  const {id}=await params;
  if(!/^[a-f0-9-]{36}$/i.test(id))return NextResponse.json({error:"Invalid listing"},{status:400});
@@ -28,3 +29,5 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
  if(error)return NextResponse.json({error:"Unable to update review"},{status:503});
  return NextResponse.json({product:data});
 }
+
+export const POST=apiRoute(handlePOST);

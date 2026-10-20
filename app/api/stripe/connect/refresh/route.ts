@@ -1,8 +1,9 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
 import { createOnboardingLink, siteUrl, stripeConnectConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const origin = new URL(request.url).origin;
   const fail = () => NextResponse.redirect(new URL("/dashboard?stripe=error", origin));
   try {
@@ -24,3 +25,5 @@ export async function GET(request: Request) {
     return fail();
   }
 }
+
+export const GET=apiRoute(handleGET);

@@ -1,10 +1,11 @@
+import {apiRoute} from "@/lib/api-route";
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser, server } from "@/lib/supabase";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const defaults={theme:"oled",effect:"none",density:"comfortable",intensity:2,reduce_motion:false};
 const themes=["oled","soft","contrast"],effects=["none","snow","stars"],densities=["comfortable","compact"];
-export async function GET(){
+async function handleGET(){
  const user=await currentUser();if(!user)return NextResponse.json({preferences:defaults,authenticated:false},{headers:{"Cache-Control":"no-store"}});
  const db=await server();if(!db)return NextResponse.json({error:"Database unavailable"},{status:503});
  const {data,error}=await db.from("prezzstore_preferences").select("theme,effect,density,intensity,reduce_motion").eq("user_id",user.id).maybeSingle();
@@ -28,3 +29,5 @@ export async function PUT(request:NextRequest){
  if(error){console.error("Appearance sync",error.message);return NextResponse.json({error:"Could not sync appearance"},{status:502});}
  return NextResponse.json({preferences:data},{headers:{"Cache-Control":"no-store"}});
 }
+
+export const GET=apiRoute(handleGET);
