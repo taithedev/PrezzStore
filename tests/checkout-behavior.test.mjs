@@ -30,7 +30,7 @@ test("upload ownership rejects traversal, foreign prefixes and invalid paths",()
  assert.equal(ownedUploadPath("owner/file.zip","owner"),true);
  for(const path of ["other/file.zip","owner/../file","owner/file?x","owner/","owner/../secret",null])assert.equal(ownedUploadPath(path,"owner"),false);
 });
-function checkoutFixture({user={id:"buyer",email:"buyer@example.test",email_confirmed_at:"yes"},owner=false,body={},kind="service",price=1000,storeOwner="seller",coupon=null,stock=2}={}){
+function checkoutFixture({user={id:"buyer",email:"buyer@example.test",email_confirmed_at:"yes"},owner=false,body={},kind="service",price=1000,storeOwner="seller",coupon=null,stock=2,platformSale=false}={}){
  const calls=[];
  const product={id:"11111111-1111-4111-8111-111111111111",store_id:"22222222-2222-4222-8222-222222222222",title:"Test product",description:"",price_cents:price,kind,stock_quantity:stock};
  const store={owner_id:storeOwner,name:"Test store",stripe_account_id:"acct_fixture",is_profile_store:false};
@@ -61,8 +61,9 @@ function checkoutFixture({user={id:"buyer",email:"buyer@example.test",email_conf
   "@/lib/supabase":{admin:()=>db,currentUser:async()=>user},
   "@/lib/receipt-email":{sendOrderReceipt:async()=>"not_configured"},
   "@/lib/authority":{platformRole:async()=>owner?"owner":null},
+  "@/lib/official-store":{isPlatformStore:async()=>platformSale},
   "@/lib/creator-plus":{creatorPlusStatus:async()=>({qualified:false}),creatorPlusFeeBps:(base)=>base},
-  "@/lib/stripe":{marketplaceFeeBps:async()=>1000,recipientStatus:async()=>"active",siteUrl:()=>"https://prezzstore.test",stripe:()=>stripe,stripeConfigured:()=>true}
+  "@/lib/stripe":{marketplaceFeeBps:async()=>1000,platformPaymentStatus:async()=>"active",recipientStatus:async()=>"active",siteUrl:()=>"https://prezzstore.test",stripe:()=>stripe,stripeConfigured:()=>true}
  }).POST;
  return {calls,run:()=>route(new Request("https://prezzstore.test/api/checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({productId:product.id,...body})}))};
 }
@@ -98,4 +99,12 @@ test("discounts are claimed for the order before starting paid Checkout",async()
 test("owner cannot use free checkout for recurring memberships",async()=>{
  const f=checkoutFixture({owner:true,kind:"membership",body:{ownerFree:true}});
  assert.equal((await f.run()).status,400);assert.equal(f.calls.length,0);
+});
+
+test("official shop receives its own sales without a transfer or commission to itself",async()=>{
+ const f=checkoutFixture({platformSale:true});
+ assert.equal((await f.run()).status,200);
+ const payment=f.calls.find(x=>x.type==="stripe").params.payment_intent_data;
+ assert.equal("transfer_data" in payment,false);
+ assert.equal("application_fee_amount" in payment,false);
 });

@@ -129,3 +129,10 @@ export async function createOnboardingLink(accountId: string, storeId?:string): 
   });
   return result.url;
 }
+
+/** Own-shop sales use the existing platform account, with no transfer to itself. */
+export async function platformPaymentStatus():Promise<RecipientStatus>{
+ const account=await stripeForConnectAndWebhooks().accounts.retrieve();
+ if(account.charges_enabled&&account.payouts_enabled)return "active";
+ return (account.requirements?.currently_due?.length||account.requirements?.pending_verification?.length)?"pending":"inactive";
+}

@@ -1,7 +1,8 @@
+import {isPlatformStore} from "@/lib/official-store";
 import {apiRoute} from "@/lib/api-route";
 import { NextRequest,NextResponse } from "next/server";
 import { admin, currentUser } from "@/lib/supabase";
-import { recipientStatus, stripeConnectConfigured } from "@/lib/stripe";
+import { recipientStatus, platformPaymentStatus, stripeConnectConfigured } from "@/lib/stripe";
 export const runtime = "nodejs";
 async function handleGET(request:NextRequest) {
   const user = await currentUser();
@@ -11,11 +12,12 @@ async function handleGET(request:NextRequest) {
   try {
     const selected=new URL(request.url).searchParams.get("store_id")||"";
     if(selected&&!/^[0-9a-f-]{36}$/i.test(selected))return NextResponse.json({error:"Invalid store ID"},{status:400});
-    let query=admin().from("prezzstore_stores").select("stripe_account_id").eq("owner_id",user.id).is("deleted_at",null);
+    let query=admin().from("prezzstore_stores").select("id,slug,owner_id,is_profile_store,stripe_account_id").eq("owner_id",user.id).is("deleted_at",null);
     if(selected)query=query.eq("id",selected);
     else query=query.eq("is_profile_store",false).order("created_at",{ascending:true}).limit(1);
     const {data:store,error}=await query.maybeSingle();
     if (error) throw error;
+    if(store&&await isPlatformStore(store))return NextResponse.json({configured:true,status:await platformPaymentStatus(),source:"platform"},{headers:{"Cache-Control":"no-store"}});
     if (!store?.stripe_account_id) return NextResponse.json({ configured: true, status: "not_connected" });
     const status = await recipientStatus(store.stripe_account_id);
     return NextResponse.json({ configured: true, status }, { headers: { "Cache-Control": "no-store" } });

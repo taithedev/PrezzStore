@@ -14,3 +14,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Verify production routes and auth boundaries
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: npm run test:smoke
+        env:
+          PREZZSTORE_EXPECTED_COMMIT: ${{ github.sha }}

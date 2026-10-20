@@ -1,5 +1,17 @@
 import assert from "node:assert/strict";
 const base=process.env.PREZZSTORE_SMOKE_URL||"https://prezz-store.vercel.app";
+if(process.env.PREZZSTORE_EXPECTED_COMMIT){
+ let ready=false;
+ for(let attempt=0;attempt<24;attempt++){
+  try{
+   const response=await fetch(new URL("/api/health",base),{signal:AbortSignal.timeout(10000)});
+   const body=await response.json();
+   if(response.ok&&body.commit===process.env.PREZZSTORE_EXPECTED_COMMIT){ready=true;break;}
+  }catch{}
+  await new Promise(resolve=>setTimeout(resolve,5000));
+ }
+ assert.ok(ready,"Expected commit did not become healthy on production within two minutes.");
+}
 const paths=["/","/explore","/shop/zuzify","/login","/creator-plus","/updates","/api/health"];
 for(const path of paths){
  const response=await fetch(new URL(path,base),{redirect:"follow",signal:AbortSignal.timeout(30000)});

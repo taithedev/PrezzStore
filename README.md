@@ -141,3 +141,18 @@ The email delivery integration is optional; if no verified Resend sender is conf
 The shop directory on the home and Discover pages includes every active studio, including studios with no published products. The official Zuzify shop appears first when its record exists. Every signed-in account can edit its public username, display name, bio, website, picture, and banner from My Account. Creator studios can separately set their shop name, picture, banner, description, and accent color. Product drafts may add an optional subtitle, tags, highlights, delivery details, and up to five gallery images. Uploaded images use the existing `prezzstore_assets` bucket and each account's own folder.
 
 Apply `supabase/migrations/011_prezzstore_profiles_listing_options.sql` before deploying the corresponding code. For paid purchases, configure the Stripe webhook at `/api/stripe/webhook` with the signing secret in `STRIPE_WEBHOOK_SECRET`. Subscribe it to Checkout completion and asynchronous success/failure, expiration, subscription changes, invoice payment failure, and charge refunds handled by the route. Keep `PREZZSTORE_LIVE_PAYMENTS_ENABLED` disabled until the Stripe platform and seller accounts are eligible and the webhook has been tested.
+
+## Reliability release — 20 October 2026
+
+- Current Supabase JWT role claims are supported by all PrezzStore backend guards. This fixes valid service requests failing with `Service role only`.
+- Payment fulfillment, refund reward reversal, stock release and discount reservations use idempotent database transactions. Only the backend service role can call settlement functions.
+- Order records preserve product names, shop names, delivery instructions and the purchased file. Unpublishing a listing does not remove its buyer's order details.
+- Listing editors can replace covers, galleries and delivery files. File ownership and object existence are checked on the server.
+- Store creation uses an authenticated API and reloads the dashboard with the new owner permissions. Password recovery goes through the shared PKCE callback.
+- Failed receipt emails can retry. Membership events read Stripe's current state, including `invoice.paid`; the existing Stripe webhook now subscribes to that event.
+- `npm test` covers checkout authorization, price tampering, stock checks, discounts and owner free checkout; `tests/database-checkout.sql` verifies transactional behavior inside a rollback.
+- `npm run test:smoke` checks the public production pages and signed-out API boundaries. CI checks the deployed commit after pushes to main.
+
+The three timestamped migrations from this release are already applied to the shared Zuzify project. They only affect PrezzStore objects and its own storage policies.
+
+**Operational status:** the Stripe webhook exists in the connected live Zuzify account. The official Zuzify shop routes its own sales directly to the platform account, whose charges and payouts are enabled. Other seller shops still need their own Stripe-hosted payout onboarding. The current Vercel connector does not authorize project details, environment settings or runtime logs, so live-key/signing-secret configuration and a real paid purchase are not yet verified. Never substitute a browser redirect for webhook fulfillment. Stripe identity and bank verification must be completed by the account representative. Tax registrations and marketplace policies remain business launch requirements.
